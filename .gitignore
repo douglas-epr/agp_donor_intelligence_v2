@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# MCP config — contains API keys, never commit
+.mcp.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
