@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "@/lib/supabase/actions";
 
 export default function LoginPage() {
@@ -113,9 +114,9 @@ export default function LoginPage() {
                 >
                   Security Credential
                 </label>
-                <button type="button" className="text-xs font-medium" style={{ color: "var(--color-secondary)" }}>
+                <Link href="/forgot-password" className="text-xs font-medium" style={{ color: "var(--color-secondary)" }}>
                   Forgot?
-                </button>
+                </Link>
               </div>
               <input
                 id="password"
