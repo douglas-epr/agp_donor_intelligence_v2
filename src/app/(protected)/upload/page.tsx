@@ -153,7 +153,7 @@ export default function UploadPage() {
         filename,
         row_count:      validRows.length,
         rejected_count: rejectedRows.length,
-        status:         "processing",
+        status:         "processing" as string,
       })
       .select("id")
       .single();

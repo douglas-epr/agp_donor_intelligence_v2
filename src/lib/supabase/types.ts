@@ -1,104 +1,160 @@
-// Generated database types — kept in sync with supabase/migrations/0000_initial.sql
-// Re-run `npx supabase gen types typescript` after schema changes in Phase 2+.
+// Auto-generated from Supabase project olrmtazyepkxjyecfyba
+// Regenerate with: mcp__supabase__generate_typescript_types
 
-export type DonorSegment = "Major Gifts" | "Mid-Level" | "Sustainer" | "First-Time" | "Lapsed" | "General";
-export type GiftChannel   = "Email" | "Direct Mail" | "Event" | "Online" | "Phone";
-export type GiftRegion    = "Midwest" | "Northeast" | "West" | "South";
-export type UploadStatus  = "pending" | "processing" | "complete" | "failed";
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          email: string;
-          full_name: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id: string;
-          email: string;
-          full_name?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          email?: string;
-          full_name?: string | null;
-        };
-      };
-      uploads: {
-        Row: {
-          id: string;
-          user_id: string;
-          filename: string;
-          uploaded_at: string;
-          row_count: number;
-          rejected_count: number;
-          status: UploadStatus;
-          storage_path: string | null;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          filename: string;
-          uploaded_at?: string;
-          row_count?: number;
-          rejected_count?: number;
-          status?: UploadStatus;
-          storage_path?: string | null;
-        };
-        Update: {
-          row_count?: number;
-          rejected_count?: number;
-          status?: UploadStatus;
-          storage_path?: string | null;
-        };
-      };
       donor_gifts: {
         Row: {
-          id: string;
-          upload_id: string;
-          user_id: string;
-          donor_id: string;
-          donor_name: string;
-          segment: DonorSegment | null;
-          gift_date: string | null;
-          gift_amount: number | null;
-          campaign: string | null;
-          channel: GiftChannel | null;
-          region: GiftRegion | null;
-          is_valid: boolean;
-          rejection_reason: string | null;
-          created_at: string;
-        };
+          campaign: string | null
+          channel: string | null
+          created_at: string
+          donor_id: string
+          donor_name: string | null
+          gift_amount: number
+          gift_date: string
+          id: string
+          is_valid: boolean
+          region: string | null
+          rejection_reason: string | null
+          segment: string | null
+          upload_id: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          upload_id: string;
-          user_id: string;
-          donor_id: string;
-          donor_name: string;
-          segment?: DonorSegment | null;
-          gift_date?: string | null;
-          gift_amount?: number | null;
-          campaign?: string | null;
-          channel?: GiftChannel | null;
-          region?: GiftRegion | null;
-          is_valid?: boolean;
-          rejection_reason?: string | null;
-          created_at?: string;
-        };
+          campaign?: string | null
+          channel?: string | null
+          created_at?: string
+          donor_id: string
+          donor_name?: string | null
+          gift_amount: number
+          gift_date: string
+          id?: string
+          is_valid?: boolean
+          region?: string | null
+          rejection_reason?: string | null
+          segment?: string | null
+          upload_id: string
+          user_id: string
+        }
         Update: {
-          is_valid?: boolean;
-          rejection_reason?: string | null;
-        };
-      };
-    };
+          campaign?: string | null
+          channel?: string | null
+          created_at?: string
+          donor_id?: string
+          donor_name?: string | null
+          gift_amount?: number
+          gift_date?: string
+          id?: string
+          is_valid?: boolean
+          region?: string | null
+          rejection_reason?: string | null
+          segment?: string | null
+          upload_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_gifts_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      uploads: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          filename: string
+          id: string
+          rejected_count: number
+          row_count: number
+          status: string
+          storage_path: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          filename: string
+          id?: string
+          rejected_count?: number
+          row_count?: number
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          filename?: string
+          id?: string
+          rejected_count?: number
+          row_count?: number
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
     Enums: {
-      donor_segment: DonorSegment;
-      gift_channel: GiftChannel;
-      gift_region: GiftRegion;
-      upload_status: UploadStatus;
-    };
-  };
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+// Convenience aliases for domain types
+export type DonorSegment = "Major Gifts" | "Mid-Level" | "Sustainer" | "First-Time" | "Lapsed" | "General";
+export type GiftChannel  = "Email" | "Direct Mail" | "Event" | "Online" | "Phone";
+export type GiftRegion   = "Midwest" | "Northeast" | "West" | "South";
+export type UploadStatus = "processing" | "complete" | "error";
