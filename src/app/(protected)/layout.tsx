@@ -1,42 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { signOut } from "@/lib/supabase/actions";
 
 const NAV_ITEMS = [
-  { label: "Overview",   href: "/dashboard",    icon: OverviewIcon },
-  { label: "Data Vault", href: "/upload",        icon: VaultIcon },
-  { label: "AI Insights",href: "/ai-explorer",  icon: AiIcon },
-  { label: "Settings",   href: "/settings",      icon: SettingsIcon },
+  { label: "Overview",    href: "/dashboard",   icon: OverviewIcon  },
+  { label: "Data Vault",  href: "/upload",       icon: VaultIcon     },
+  { label: "AI Insights", href: "/ai-explorer", icon: AiIcon        },
+  { label: "Settings",    href: "/settings",     icon: SettingsIcon  },
 ] as const;
 
 const TOP_NAV = [
-  { label: "Dashboard",   href: "/dashboard" },
-  { label: "Upload",      href: "/upload" },
+  { label: "Dashboard",   href: "/dashboard"   },
+  { label: "Upload",      href: "/upload"       },
   { label: "AI Explorer", href: "/ai-explorer" },
-  { label: "Reports",     href: "/reports" },
+  { label: "Reports",     href: "/reports"      },
 ] as const;
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const pathname  = usePathname();
-  const router    = useRouter();
-
-  // Phase 1 auth guard — replaced by Supabase middleware in Phase 2
-  useEffect(() => {
-    if (!sessionStorage.getItem("agp_session")) {
-      router.replace("/login");
-    }
-  }, [router]);
-
-  function handleLogout() {
-    sessionStorage.removeItem("agp_session");
-    router.push("/login");
-  }
+  const pathname = usePathname();
+  // Auth guard is now handled by middleware.ts — no client-side redirect needed.
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: "var(--color-bg)" }}>
-      {/* ── Top Nav ──────────────────────────────────────────────────── */}
+      {/* ── Top Nav ─────────────────────────────────────────────────── */}
       <header
         className="flex items-center justify-between px-6 shrink-0 z-10"
         style={{
@@ -46,7 +34,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           boxShadow: "var(--shadow-card)",
         }}
       >
-        {/* Logo */}
         <div className="flex items-center gap-2">
           <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
             <rect x="1" y="11" width="4" height="10" rx="1" fill="#2F6FED" />
@@ -60,15 +47,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           </span>
         </div>
 
-        {/* Center nav links */}
         <nav className="flex items-center gap-1">
           {TOP_NAV.map(({ label, href }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
+            const active = pathname === href;
             return (
               <Link
                 key={href}
                 href={href}
-                className="px-4 py-1.5 text-sm font-medium rounded-md transition-colors"
+                className="px-4 py-1.5 text-sm font-medium transition-colors"
                 style={{
                   color: active ? "var(--color-secondary)" : "var(--color-text-muted)",
                   borderBottom: active ? "2px solid var(--color-secondary)" : "2px solid transparent",
@@ -81,21 +67,20 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Right controls */}
         <div className="flex items-center gap-3">
-          <button
+          <Link
+            href="/ai-explorer"
             className="px-4 py-1.5 text-sm font-semibold text-white rounded-md flex items-center gap-1.5"
             style={{ backgroundColor: "var(--color-secondary)" }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v6M3 4l3-3 3 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="6" cy="6" r="5" stroke="white" strokeWidth="1.4" />
+              <path d="M4 6h4M6 4l2 2-2 2" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             New Query
-          </button>
-          {/* Avatar */}
+          </Link>
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
             style={{ backgroundColor: "var(--color-primary)" }}
           >
             A
@@ -113,20 +98,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             borderRight: "1px solid var(--color-border)",
           }}
         >
-          {/* Brand */}
           <div className="px-5 pb-5" style={{ borderBottom: "1px solid var(--color-border)" }}>
-            <p className="text-xs font-bold" style={{ color: "var(--color-primary)" }}>
-              AGP Intelligence
-            </p>
-            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-              Institutional Grade
-            </p>
+            <p className="text-xs font-bold" style={{ color: "var(--color-primary)" }}>AGP Intelligence</p>
+            <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Institutional Grade</p>
           </div>
 
-          {/* Nav items */}
           <nav className="flex flex-col gap-0.5 px-3 pt-4 flex-1">
             {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-              const active = pathname === href || pathname.startsWith(href + "/");
+              const active = pathname === href;
               return (
                 <Link
                   key={href}
@@ -144,7 +123,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             })}
           </nav>
 
-          {/* Quick action */}
           <div className="px-4 py-4" style={{ borderTop: "1px solid var(--color-border)" }}>
             <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--color-text-muted)" }}>
               Quick Action
@@ -158,10 +136,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
 
-          {/* Bottom links */}
           <div className="px-4 pb-2 flex flex-col gap-1">
             <button
-              className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md transition-colors text-left w-full"
+              className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md text-left w-full"
               style={{ color: "var(--color-text-muted)" }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -170,20 +147,22 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
               </svg>
               Help Center
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md transition-colors text-left w-full"
-              style={{ color: "var(--color-error)" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h3M9 10l3-3-3-3M12 7H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Logout
-            </button>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md text-left w-full"
+                style={{ color: "var(--color-error)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M5 2H2a1 1 0 00-1 1v8a1 1 0 001 1h3M9 10l3-3-3-3M12 7H5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Logout
+              </button>
+            </form>
           </div>
         </aside>
 
-        {/* ── Main Content ──────────────────────────────────────────── */}
+        {/* ── Main Content ───────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
@@ -192,7 +171,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   );
 }
 
-// ── Icon Components ───────────────────────────────────────────────────────────
 function OverviewIcon({ active }: { active: boolean }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
