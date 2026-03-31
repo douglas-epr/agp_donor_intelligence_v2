@@ -1,5 +1,5 @@
-// Auto-generated from Supabase project olrmtazyepkxjyecfyba
-// Regenerate with: mcp__supabase__generate_typescript_types
+// Auto-generated + extended for AGP Donor Intelligence v2
+// Project: olrmtazyepkxjyecfyba
 
 export type Json =
   | string
@@ -137,6 +137,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_settings: {
+        Row: {
+          id: string
+          user_id: string
+          type: "Gemini" | "OpenAI" | "Claude"
+          model: string
+          api_key: string
+          selected: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: "Gemini" | "OpenAI" | "Claude"
+          model?: string
+          api_key?: string
+          selected?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: "Gemini" | "OpenAI" | "Claude"
+          model?: string
+          api_key?: string
+          selected?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name?: string
+          description?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -145,7 +205,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      ai_provider: "Gemini" | "OpenAI" | "Claude"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -153,8 +213,9 @@ export type Database = {
   }
 }
 
-// Convenience aliases for domain types
+// Convenience type aliases
 export type DonorSegment = "Major Gifts" | "Mid-Level" | "Sustainer" | "First-Time" | "Lapsed" | "General";
 export type GiftChannel  = "Email" | "Direct Mail" | "Event" | "Online" | "Phone";
 export type GiftRegion   = "Midwest" | "Northeast" | "West" | "South";
 export type UploadStatus = "processing" | "complete" | "error";
+export type AIProvider   = "Gemini" | "OpenAI" | "Claude";

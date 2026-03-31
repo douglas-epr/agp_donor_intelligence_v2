@@ -110,30 +110,30 @@ export default async function DashboardPage() {
             </div>
           </div>
           {giftsByMonth.length === 0 ? (
-            <div className="flex items-center justify-center h-40" style={{ color: "var(--color-text-muted)" }}>
+            <div className="flex items-center justify-center h-48" style={{ color: "var(--color-text-muted)" }}>
               <p className="text-sm">Upload a CSV to see gift trends</p>
             </div>
           ) : (
-            <div className="flex items-end gap-2 h-40">
+            <div className="flex items-end gap-1.5 h-48">
               {giftsByMonth.map(({ month, currentYear, previousYear }) => {
                 const maxVal = Math.max(...giftsByMonth.map((m) => Math.max(m.currentYear, m.previousYear)), 1);
                 const curH = Math.max((currentYear / maxVal) * 100, 2);
                 const prevH = Math.max((previousYear / maxVal) * 100, 2);
                 return (
                   <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex gap-0.5 items-end" style={{ height: 120 }}>
+                    <div className="w-full flex gap-0.5 items-end" style={{ height: 160 }}>
                       <div
-                        className="flex-1 rounded-t-sm transition-all"
+                        className="flex-1 rounded-t-sm transition-all cursor-default"
                         style={{ height: `${prevH}%`, backgroundColor: "var(--color-border)" }}
-                        title={`${month} prev: ${fmt(previousYear)}`}
+                        title={`${month} prev yr: ${fmt(previousYear)}`}
                       />
                       <div
-                        className="flex-1 rounded-t-sm transition-all"
+                        className="flex-1 rounded-t-sm transition-all cursor-default"
                         style={{ height: `${curH}%`, backgroundColor: "var(--color-secondary)" }}
                         title={`${month}: ${fmt(currentYear)}`}
                       />
                     </div>
-                    <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{month}</span>
+                    <span className="text-xs" style={{ color: "var(--color-text-muted)", fontSize: "0.65rem" }}>{month}</span>
                   </div>
                 );
               })}
@@ -157,50 +157,49 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-center h-32" style={{ color: "var(--color-text-muted)" }}>
               <p className="text-sm">No data yet</p>
             </div>
-          ) : (
-            <>
-              {/* Simple donut using conic-gradient */}
-              <div className="flex justify-center mb-4">
-                <div className="relative w-28 h-28">
-                  <div
-                    className="w-full h-full rounded-full"
-                    style={{
-                      background: `conic-gradient(
-                        #2F6FED 0% ${bySegment[0]?.percentage ?? 0}%,
-                        #1F3E77 ${bySegment[0]?.percentage ?? 0}% ${(bySegment[0]?.percentage ?? 0) + (bySegment[1]?.percentage ?? 0)}%,
-                        #9EDC4B ${(bySegment[0]?.percentage ?? 0) + (bySegment[1]?.percentage ?? 0)}% 100%
-                      )`,
-                    }}
-                  />
-                  <div
-                    className="absolute inset-3 rounded-full flex flex-col items-center justify-center"
-                    style={{ backgroundColor: "var(--color-surface)" }}
-                  >
-                    <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
-                      {kpis.donorCount.toLocaleString()}
-                    </p>
-                    <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Total</p>
+          ) : (() => {
+            const SEGMENT_COLORS = ["#2F6FED","#1F3E77","#9EDC4B","#F59E0B","#EF4444","#8B5CF6","#06B6D4","#EC4899"];
+            let cumulative = 0;
+            const stops = bySegment.map((s, i) => {
+              const start = cumulative;
+              cumulative += s.percentage;
+              return `${SEGMENT_COLORS[i % SEGMENT_COLORS.length]} ${start}% ${cumulative}%`;
+            });
+            return (
+              <>
+                <div className="flex justify-center mb-4">
+                  <div className="relative w-28 h-28">
+                    <div
+                      className="w-full h-full rounded-full"
+                      style={{ background: `conic-gradient(${stops.join(", ")})` }}
+                    />
+                    <div
+                      className="absolute inset-3 rounded-full flex flex-col items-center justify-center"
+                      style={{ backgroundColor: "var(--color-surface)" }}
+                    >
+                      <p className="text-xs font-semibold" style={{ color: "var(--color-text)" }}>
+                        {kpis.donorCount.toLocaleString()}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>Total</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                {bySegment.slice(0, 4).map(({ segment, count, percentage }, i) => {
-                  const colors = ["#2F6FED", "#1F3E77", "#9EDC4B", "#F59E0B"];
-                  return (
+                <div className="flex flex-col gap-2">
+                  {bySegment.map(({ segment, count, percentage }, i) => (
                     <div key={segment} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i] }} />
-                        <span className="text-xs" style={{ color: "var(--color-text)" }}>{segment}</span>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
+                        <span className="text-xs truncate" style={{ color: "var(--color-text)" }}>{segment}</span>
                       </div>
-                      <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
+                      <span className="text-xs font-medium shrink-0 ml-2" style={{ color: "var(--color-text-muted)" }}>
                         {count} · {percentage}%
                       </span>
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -225,7 +224,7 @@ export default async function DashboardPage() {
             <p className="text-sm text-center py-8" style={{ color: "var(--color-text-muted)" }}>No campaigns found</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {byCampaign.slice(0, 5).map(({ campaign, totalRaised }) => (
+              {byCampaign.slice(0, 6).map(({ campaign, totalRaised }) => (
                 <div key={campaign} className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium truncate mr-2" style={{ color: "var(--color-text)" }}>{campaign}</p>
@@ -288,9 +287,9 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <p className="text-xs text-center" style={{ color: "var(--color-text-muted)" }}>
-        © 2024 AGP Donor Intelligence. Executive Confidential. ·
-        <a href="/upload" style={{ color: "var(--color-secondary)" }} className="ml-1">Upload new dataset →</a>
+      <p className="text-xs text-center pb-2" style={{ color: "var(--color-text-muted)" }}>
+        AGP Donor Intelligence · Executive Confidential ·{" "}
+        <a href="/upload" style={{ color: "var(--color-secondary)" }}>Upload new dataset →</a>
       </p>
     </div>
   );
