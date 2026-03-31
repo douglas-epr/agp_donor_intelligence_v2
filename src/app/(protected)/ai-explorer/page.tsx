@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { savePrompt } from "@/lib/supabase/actions";
+import { savePrompt, saveAISettings } from "@/lib/supabase/actions";
 import { useUploadContext } from "@/context/UploadContext";
+import type { AIProvider } from "@/lib/supabase/types";
 
 type Message = { role: "user" | "assistant"; content: string; streaming?: boolean };
 
@@ -15,8 +16,321 @@ const EXAMPLE_QUESTIONS = [
   "Compare current year vs previous year giving",
 ];
 
+const PROVIDERS: AIProvider[] = ["Claude", "OpenAI", "Gemini"];
+const DEFAULT_MODELS: Record<AIProvider, string> = {
+  Claude: "claude-sonnet-4-6",
+  OpenAI: "gpt-4o",
+  Gemini: "gemini-1.5-pro",
+};
+
+type ChangeModelPopupProps = {
+  currentProvider: string;
+  onClose: () => void;
+  onChanged: (provider: string) => void;
+};
+
+function ChangeModelPopup({ currentProvider, onClose, onChanged }: ChangeModelPopupProps) {
+  type Row = { id: string; type: AIProvider; model: string; selected: boolean };
+  const [rows, setRows] = useState<Row[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("ai_settings")
+        .select("id, type, model, api_key, selected")
+        .eq("user_id", user.id);
+      if (data) {
+        // Only show rows that have both model and api_key filled
+        const configured = data.filter((r) => r.model?.trim() && r.api_key?.trim());
+        setRows(configured.map((r) => ({ id: r.id, type: r.type as AIProvider, model: r.model, selected: r.selected })));
+        const cur = configured.find((r) => r.selected);
+        if (cur) setSelectedId(cur.id);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  async function handleSave() {
+    if (!selectedId) return;
+    setSaving(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); return; }
+    // Load all settings to preserve non-configured rows
+    const { data: all } = await supabase.from("ai_settings").select("*").eq("user_id", user.id);
+    if (all) {
+      const updated = all.map((r) => ({
+        type: r.type as AIProvider,
+        model: r.model,
+        api_key: r.api_key,
+        selected: r.id === selectedId,
+      }));
+      await saveAISettings(updated);
+    }
+    const selected = rows.find((r) => r.id === selectedId);
+    if (selected) onChanged(`${selected.type} · ${selected.model}`);
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+      <div
+        className="w-full max-w-sm rounded-xl p-5 flex flex-col gap-4"
+        style={{ backgroundColor: "var(--color-surface)", boxShadow: "var(--shadow-elevated)" }}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "var(--color-text)" }}>Change AI Model</h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Switch to a different configured provider</p>
+          </div>
+          <button onClick={onClose} style={{ color: "var(--color-text-muted)" }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-center py-4" style={{ color: "var(--color-text-muted)" }}>Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-center py-4" style={{ color: "var(--color-text-muted)" }}>
+            No other providers configured. Go to <a href="/settings" style={{ color: "var(--color-secondary)" }}>Settings</a> to add one.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {rows.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => setSelectedId(row.id)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all"
+                style={{
+                  border: `1px solid ${selectedId === row.id ? "var(--color-secondary)" : "var(--color-border)"}`,
+                  backgroundColor: selectedId === row.id ? "rgba(47,111,237,0.05)" : "var(--color-bg)",
+                }}
+              >
+                <div
+                  className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                  style={{ borderColor: selectedId === row.id ? "var(--color-secondary)" : "var(--color-border)" }}
+                >
+                  {selectedId === row.id && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: selectedId === row.id ? "var(--color-secondary)" : "var(--color-text)" }}>
+                    {row.type}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>{row.model}</p>
+                </div>
+                {`${row.type} · ${row.model}` === currentProvider && (
+                  <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.1)", color: "var(--color-secondary)" }}>
+                    Current
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border" style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}>
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !selectedId || rows.length === 0}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50"
+            style={{ backgroundColor: "var(--color-secondary)" }}
+          >
+            {saving ? "Switching…" : "Switch Model"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type AIConfigPopupProps = {
+  onClose: () => void;
+  onSaved: (provider: string) => void;
+};
+
+function AIConfigPopup({ onClose, onSaved }: AIConfigPopupProps) {
+  const [aiRows, setAiRows] = useState(
+    PROVIDERS.map((type) => ({ type, model: DEFAULT_MODELS[type], api_key: "", selected: false }))
+  );
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  function canSelect(type: AIProvider) {
+    const row = aiRows.find((r) => r.type === type);
+    return !!(row?.model.trim() && row?.api_key.trim());
+  }
+
+  function selectAI(type: AIProvider) {
+    if (!canSelect(type)) return;
+    setAiRows((prev) => prev.map((r) => ({ ...r, selected: r.type === type })));
+  }
+
+  async function handleSave() {
+    const selected = aiRows.find((r) => r.selected);
+    if (!selected) { setMsg({ type: "error", text: "Select an AI provider first." }); return; }
+    setSaving(true);
+    setMsg(null);
+
+    const result = await saveAISettings(aiRows);
+    if (result?.error) { setMsg({ type: "error", text: result.error }); setSaving(false); return; }
+
+    // Validate the key
+    const validateRes = await fetch("/api/validate-ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: selected.type, model: selected.model, api_key: selected.api_key }),
+    });
+    const validateData = await validateRes.json();
+    if (!validateData.valid) {
+      setMsg({ type: "error", text: validateData.error ?? "API key validation failed. Please check your credentials." });
+      const unselected = aiRows.map((r) => ({ ...r, selected: false }));
+      await saveAISettings(unselected);
+      setAiRows(unselected);
+      setSaving(false);
+      return;
+    }
+
+    setSaving(false);
+    onSaved(`${selected.type} · ${selected.model}`);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+      <div
+        className="w-full max-w-lg rounded-xl p-6 flex flex-col gap-4"
+        style={{ backgroundColor: "var(--color-surface)", boxShadow: "var(--shadow-elevated)" }}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold" style={{ color: "var(--color-text)" }}>Configure AI Provider</h2>
+            <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Enter your API key and select a provider to enable AI Explorer.</p>
+          </div>
+          <button onClick={onClose} style={{ color: "var(--color-text-muted)" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {msg && (
+          <div
+            className="px-3 py-2 rounded-md text-sm"
+            style={{
+              backgroundColor: msg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)",
+              color: msg.type === "error" ? "var(--color-error)" : "#5a8a1e",
+              border: `1px solid ${msg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}`,
+            }}
+          >
+            {msg.text}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {aiRows.map((row) => {
+            const selectable = canSelect(row.type);
+            return (
+              <div
+                key={row.type}
+                className="rounded-lg p-4 flex flex-col gap-3 transition-all"
+                style={{
+                  border: `1px solid ${row.selected ? "var(--color-secondary)" : "var(--color-border)"}`,
+                  backgroundColor: row.selected ? "rgba(47,111,237,0.04)" : "var(--color-bg)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => selectAI(row.type)}
+                    disabled={!selectable}
+                    className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                      style={{ borderColor: row.selected ? "var(--color-secondary)" : "var(--color-border)" }}
+                    >
+                      {row.selected && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
+                    </div>
+                    {row.type}
+                  </button>
+                  {row.selected && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.12)", color: "var(--color-secondary)" }}>
+                      Active
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Model</label>
+                    <input
+                      type="text"
+                      value={row.model}
+                      onChange={(e) => setAiRows((prev) => prev.map((r) => r.type === row.type ? { ...r, model: e.target.value } : r))}
+                      placeholder={DEFAULT_MODELS[row.type]}
+                      className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
+                      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>API Key</label>
+                    <input
+                      type="password"
+                      value={row.api_key}
+                      onChange={(e) => setAiRows((prev) => prev.map((r) => r.type === row.type ? { ...r, api_key: e.target.value } : r))}
+                      placeholder="sk-..."
+                      className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
+                      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg border"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
+            style={{ backgroundColor: "var(--color-secondary)" }}
+          >
+            {saving ? "Saving…" : "Save AI Settings"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AiExplorerPage() {
   const { selectedUploadId } = useUploadContext();
+  const [mounted, setMounted] = useState(false);
+  const [aiLoaded, setAiLoaded] = useState(false);
+  const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showChangeModel, setShowChangeModel] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,10 +343,12 @@ export default function AiExplorerPage() {
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
+      if (!user) { setAiLoaded(true); return; }
 
       // Load agent prompt
       const { data: promptRow } = await supabase
@@ -59,6 +375,7 @@ export default function AiExplorerPage() {
         .single();
 
       if (aiRow) setActiveProvider(`${aiRow.type} · ${aiRow.model}`);
+      setAiLoaded(true);
     });
   }, []);
 
@@ -112,7 +429,7 @@ export default function AiExplorerPage() {
         ...prev.slice(0, -1),
         { role: "assistant", content: full, streaming: false },
       ]);
-    } catch (e) {
+    } catch {
       setMessages((prev) => [
         ...prev.slice(0, -1),
         { role: "assistant", content: "Network error. Please try again." },
@@ -136,6 +453,72 @@ export default function AiExplorerPage() {
     setEditSaving(false);
   }
 
+  // Gate: no upload selected
+  if (mounted && !selectedUploadId) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <div className="text-center max-w-sm">
+          <div
+            className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(47,111,237,0.08)" }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 16v-8M8 12l4-4 4 4" stroke="var(--color-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="3" y="3" width="18" height="18" rx="3" stroke="var(--color-secondary)" strokeWidth="1.5" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold mb-2" style={{ color: "var(--color-text)" }}>No dataset selected</h2>
+          <p className="text-sm mb-5" style={{ color: "var(--color-text-muted)" }}>
+            Upload a CSV and select it as your active dataset to start asking questions about your donor data.
+          </p>
+          <a
+            href="/upload"
+            className="px-5 py-2.5 text-sm font-semibold text-white rounded-lg inline-block"
+            style={{ backgroundColor: "var(--color-secondary)" }}
+          >
+            Go to Upload →
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Gate: no AI provider configured
+  if (mounted && aiLoaded && !activeProvider) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <div className="text-center max-w-sm">
+          <div
+            className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
+            style={{ backgroundColor: "rgba(47,111,237,0.08)" }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="var(--color-secondary)" strokeWidth="1.5" />
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="var(--color-secondary)" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold mb-2" style={{ color: "var(--color-text)" }}>No AI provider configured</h2>
+          <p className="text-sm mb-5" style={{ color: "var(--color-text-muted)" }}>
+            Configure an AI provider to start asking questions about your donor data.
+          </p>
+          <button
+            onClick={() => setShowAIConfig(true)}
+            className="px-5 py-2.5 text-sm font-semibold text-white rounded-lg inline-block"
+            style={{ backgroundColor: "var(--color-secondary)" }}
+          >
+            Configure AI Provider
+          </button>
+        </div>
+        {showAIConfig && (
+          <AIConfigPopup
+            onClose={() => setShowAIConfig(false)}
+            onSaved={(provider) => { setActiveProvider(provider); setShowAIConfig(false); }}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full" style={{ maxHeight: "calc(100vh - 52px - 48px)" }}>
       {/* Header */}
@@ -146,14 +529,20 @@ export default function AiExplorerPage() {
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-accent)" }} />
             <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>{agentName}</span>
             {activeProvider && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.1)", color: "var(--color-secondary)" }}>
-                {activeProvider}
-              </span>
-            )}
-            {!activeProvider && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(245,158,11,0.1)", color: "var(--color-warning)" }}>
-                No AI configured — go to Settings
-              </span>
+              <>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.1)", color: "var(--color-secondary)" }}>
+                  {activeProvider}
+                </span>
+                <button
+                  onClick={() => setShowChangeModel(true)}
+                  className="text-xs px-2 py-0.5 rounded-full border transition-colors"
+                  style={{ borderColor: "var(--color-border)", color: "var(--color-text-muted)", backgroundColor: "transparent" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-secondary)"; e.currentTarget.style.color = "var(--color-secondary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-muted)"; }}
+                >
+                  Change
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -289,6 +678,15 @@ export default function AiExplorerPage() {
           </p>
         </div>
       </div>
+
+      {/* Change Model Modal */}
+      {showChangeModel && activeProvider && (
+        <ChangeModelPopup
+          currentProvider={activeProvider}
+          onClose={() => setShowChangeModel(false)}
+          onChanged={(provider) => { setActiveProvider(provider); setShowChangeModel(false); }}
+        />
+      )}
 
       {/* Edit Agent Modal */}
       {showEditModal && (

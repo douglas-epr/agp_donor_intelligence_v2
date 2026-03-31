@@ -103,39 +103,33 @@ export type Database = {
       }
       uploads: {
         Row: {
-          created_at: string
-          error_message: string | null
+          uploaded_at: string
           filename: string
           id: string
           rejected_count: number
           row_count: number
           status: string
           storage_path: string | null
-          updated_at: string
           user_id: string
         }
         Insert: {
-          created_at?: string
-          error_message?: string | null
+          uploaded_at?: string
           filename: string
           id?: string
           rejected_count?: number
           row_count?: number
           status?: string
           storage_path?: string | null
-          updated_at?: string
           user_id: string
         }
         Update: {
-          created_at?: string
-          error_message?: string | null
+          uploaded_at?: string
           filename?: string
           id?: string
           rejected_count?: number
           row_count?: number
           status?: string
           storage_path?: string | null
-          updated_at?: string
           user_id?: string
         }
         Relationships: []

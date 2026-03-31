@@ -41,7 +41,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (isAuthRoute && user) {
+  // Don't redirect away from /reset-password — user may be arriving via a
+  // recovery email link and needs to stay on the page to set their new password.
+  if (isAuthRoute && user && !pathname.startsWith("/reset-password")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

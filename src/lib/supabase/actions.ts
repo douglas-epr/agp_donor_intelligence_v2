@@ -151,6 +151,20 @@ export async function updateUploadFilename(id: string, filename: string) {
   return { success: true };
 }
 
+export async function deleteUpload(id: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("uploads")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
 export async function savePrompt(name: string, description: string) {
@@ -158,12 +172,23 @@ export async function savePrompt(name: string, description: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return { error: "Not authenticated" };
 
-  const { error } = await supabase
+  const { data: existing } = await supabase
     .from("prompts")
-    .upsert(
-      { user_id: user.id, name, description, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    );
-  if (error) return { error: error.message };
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("prompts")
+      .update({ name, description, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("prompts")
+      .insert({ user_id: user.id, name, description });
+    if (error) return { error: error.message };
+  }
   return { success: true };
 }

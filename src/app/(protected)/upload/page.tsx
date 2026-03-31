@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { updateUploadFilename } from "@/lib/supabase/actions";
+import { updateUploadFilename, deleteUpload } from "@/lib/supabase/actions";
 import { useUploadContext } from "@/context/UploadContext";
 import { DonorSegment, GiftChannel, GiftRegion, RowStatus } from "@/lib/constants/enums";
 import type { ParsedRow } from "@/mocks/types";
@@ -46,6 +46,9 @@ function validateRow(raw: Record<string, string>, index: number): ParsedRow {
     };
   }
 
+  // Normalize to ISO YYYY-MM-DD so PostgreSQL DATE column accepts it
+  const normalized_date = new Date(Date.parse(gift_date)).toISOString().split("T")[0];
+
   const gift_amount = parseFloat(gift_amount_raw.replace(/[$,]/g, ""));
   if (isNaN(gift_amount) || gift_amount < 0) {
     return {
@@ -53,7 +56,7 @@ function validateRow(raw: Record<string, string>, index: number): ParsedRow {
       donor_id:    donor_id || `UNKNOWN-${index}`,
       donor_name:  donor_name || "Unknown",
       segment:     DonorSegment.GENERAL,
-      gift_date,
+      gift_date:   normalized_date,
       gift_amount: 0,
       campaign,
       channel:     GiftChannel.ONLINE,
@@ -77,7 +80,7 @@ function validateRow(raw: Record<string, string>, index: number): ParsedRow {
     donor_id:    donor_id || `UNKNOWN-${index}`,
     donor_name:  donor_name || "Unknown",
     segment:     (VALID_SEGMENTS.includes(segment as DonorSegment) ? segment : DonorSegment.GENERAL) as DonorSegment,
-    gift_date,
+    gift_date:   normalized_date,
     gift_amount,
     campaign:    campaign || "General",
     channel:     (VALID_CHANNELS.includes(channel as GiftChannel) ? channel : GiftChannel.ONLINE) as GiftChannel,
@@ -104,11 +107,14 @@ type UploadRow = {
   filename: string;
   row_count: number;
   status: string;
-  created_at: string;
+  uploaded_at: string;
 };
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 export default function UploadPage() {
@@ -141,9 +147,9 @@ export default function UploadPage() {
     if (!user) return;
     const { data } = await supabase
       .from("uploads")
-      .select("id, filename, row_count, status, created_at")
+      .select("id, filename, row_count, status, uploaded_at")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("uploaded_at", { ascending: false });
     if (data) {
       setUploads(data);
       // Auto-select the most recent if nothing is selected
@@ -245,6 +251,13 @@ export default function UploadPage() {
   function selectUpload(id: string) {
     setSelectedUploadId(id);
     router.push("/dashboard?upload=" + id);
+  }
+
+  async function handleDeleteUpload(id: string) {
+    const result = await deleteUpload(id);
+    if (result?.error) { setError(result.error); return; }
+    setUploads((prev) => prev.filter((u) => u.id !== id));
+    if (selectedUploadId === id) setSelectedUploadId(null);
   }
 
   return (
@@ -426,7 +439,7 @@ export default function UploadPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "var(--color-bg)" }}>
-                {["", "Filename", "Rows", "Status", "Uploaded", ""].map((h, i) => (
+                {["", "Filename", "Rows", "Status", "Uploaded", "", ""].map((h, i) => (
                   <th key={i} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>{h}</th>
                 ))}
               </tr>
@@ -437,6 +450,7 @@ export default function UploadPage() {
                 return (
                   <tr
                     key={u.id}
+                    className="group"
                     style={{
                       borderTop: "1px solid var(--color-border)",
                       backgroundColor: isActive ? "rgba(47,111,237,0.04)" : "transparent",
@@ -503,7 +517,7 @@ export default function UploadPage() {
 
                     {/* Date */}
                     <td className="px-4 py-3 text-xs" style={{ color: "var(--color-text-muted)" }}>
-                      {formatDate(u.created_at)}
+                      {formatDateTime(u.uploaded_at)}
                     </td>
 
                     {/* Select button */}
@@ -523,6 +537,22 @@ export default function UploadPage() {
                           Select
                         </button>
                       )}
+                    </td>
+
+                    {/* Delete */}
+                    <td className="px-4 py-3 w-8">
+                      <button
+                        onClick={() => handleDeleteUpload(u.id)}
+                        title="Delete upload"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: "var(--color-text-muted)" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-error)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5h6.6L11 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 );

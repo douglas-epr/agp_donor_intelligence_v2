@@ -54,7 +54,13 @@ export default function SettingsPage() {
       });
   }, []);
 
+  function canSelectAI(type: AIProvider) {
+    const row = aiRows.find((r) => r.type === type);
+    return !!(row?.model.trim() && row?.api_key.trim());
+  }
+
   function selectAI(type: AIProvider) {
+    if (!canSelectAI(type)) return;
     setAiRows((prev) => prev.map((r) => ({ ...r, selected: r.type === type })));
   }
 
@@ -88,7 +94,32 @@ export default function SettingsPage() {
     setAiSaving(true);
     setAiMsg(null);
     const result = await saveAISettings(aiRows);
-    setAiMsg(result?.error ? { type: "error", text: result.error } : { type: "success", text: "AI settings saved." });
+    if (result?.error) {
+      setAiMsg({ type: "error", text: result.error });
+      setAiSaving(false);
+      return;
+    }
+
+    // Validate the selected provider's API key
+    const selected = aiRows.find((r) => r.selected);
+    if (selected) {
+      const validateRes = await fetch("/api/validate-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: selected.type, model: selected.model, api_key: selected.api_key }),
+      });
+      const validateData = await validateRes.json();
+      if (!validateData.valid) {
+        setAiMsg({ type: "error", text: validateData.error ?? "API key validation failed. Please check your credentials." });
+        const unselected = aiRows.map((r) => ({ ...r, selected: false }));
+        setAiRows(unselected);
+        await saveAISettings(unselected);
+        setAiSaving(false);
+        return;
+      }
+    }
+
+    setAiMsg({ type: "success", text: "AI settings saved." });
     setAiSaving(false);
   }
 
@@ -185,7 +216,9 @@ export default function SettingsPage() {
         )}
 
         <form onSubmit={handleAISave} className="flex flex-col gap-4">
-          {aiRows.map((row) => (
+          {aiRows.map((row) => {
+            const selectable = canSelectAI(row.type);
+            return (
             <div
               key={row.type}
               className="rounded-lg p-4 flex flex-col gap-3 transition-all"
@@ -199,7 +232,8 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => selectAI(row.type)}
-                    className="flex items-center gap-2.5 font-semibold text-sm"
+                    disabled={!selectable}
+                    className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
                   >
                     <div
@@ -248,7 +282,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-          ))}
+          );})}
 
           <button type="submit" disabled={aiSaving || loading} className="px-5 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 self-start" style={{ backgroundColor: "var(--color-secondary)" }}>
             {aiSaving ? "Saving…" : "Save AI Settings"}

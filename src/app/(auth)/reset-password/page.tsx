@@ -16,27 +16,32 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    let recovered = false;
 
-    // Supabase embeds the recovery token in the URL hash.
-    // onAuthStateChange picks up the PASSWORD_RECOVERY event after the
-    // browser client exchanges the token for a session.
+    // Listen for the PASSWORD_RECOVERY event. This fires after the
+    // recovery token (hash-based) or PKCE code has been exchanged.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
+        recovered = true;
         setStep("ready");
       }
     });
 
-    // If the user lands here without a recovery token (direct navigation),
-    // redirect to forgot-password after a short delay.
-    const timeout = setTimeout(() => {
-      setStep((s) => {
-        if (s === "loading") {
-          router.replace("/forgot-password");
-          return "error";
-        }
-        return s;
+    // PKCE flow: Supabase sends ?code=xxx in the URL. The browser client
+    // does not auto-exchange it in SSR mode, so we do it explicitly here.
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).catch(() => {
+        router.replace("/forgot-password");
       });
-    }, 3000);
+    }
+
+    // If no recovery event fires within 4 s, the link is invalid or expired.
+    const timeout = setTimeout(() => {
+      if (!recovered) {
+        router.replace("/forgot-password");
+      }
+    }, 4000);
 
     return () => {
       subscription.unsubscribe();
