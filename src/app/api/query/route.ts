@@ -2,8 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/lib/supabase/types";
 
-export const runtime = "edge";
-
 async function getSupabase() {
   const cookieStore = await cookies();
   return createServerClient<Database>(
@@ -25,13 +23,13 @@ export async function POST(req: Request) {
     history?: Array<{ role: "user" | "assistant"; content: string }>;
   };
   if (!question?.trim()) {
-    return new Response(JSON.stringify({ error: "No question provided" }), { status: 400 });
+    return Response.json({ error: "No question provided" }, { status: 400 });
   }
 
   const supabase = await getSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Load agent prompt
@@ -79,10 +77,7 @@ export async function POST(req: Request) {
   }
 
   const { data: gifts } = await giftsQuery;
-
   const context = buildContext(gifts ?? []);
-
-  // Embed data context in the system prompt so all turns share it
   const fullSystem = `${systemPrompt}\n\n${context}`;
 
   // Build full messages array: prior conversation history + new question
@@ -97,13 +92,40 @@ export async function POST(req: Request) {
   const model = aiSetting?.model ?? "claude-sonnet-4-6";
   const apiKey = aiSetting?.api_key ?? process.env.ANTHROPIC_API_KEY ?? "";
 
-  if (provider === "Claude") {
-    return streamClaude(fullSystem, allMessages, model, apiKey);
-  } else if (provider === "OpenAI") {
-    return streamOpenAI(fullSystem, allMessages, model, apiKey);
-  } else {
-    return streamGemini(fullSystem, allMessages, model, apiKey);
+  // Call AI provider (non-streaming)
+  let content: string;
+  let aiError: string | null = null;
+
+  try {
+    if (provider === "Claude") {
+      content = await callClaude(fullSystem, allMessages, model, apiKey);
+    } else if (provider === "OpenAI") {
+      content = await callOpenAI(fullSystem, allMessages, model, apiKey);
+    } else {
+      content = await callGemini(fullSystem, allMessages, model, apiKey);
+    }
+  } catch (err) {
+    aiError = err instanceof Error ? err.message : "AI provider error";
+    return Response.json({ error: aiError }, { status: 500 });
   }
+
+  // Save both messages to chat table (server-side, scoped to the upload at call time)
+  await supabase.from("chat").insert([
+    {
+      user_id: user.id,
+      upload_id: resolvedUploadId ?? null,
+      role: "user" as const,
+      message: question,
+    },
+    {
+      user_id: user.id,
+      upload_id: resolvedUploadId ?? null,
+      role: "assistant" as const,
+      message: content,
+    },
+  ]);
+
+  return Response.json({ content });
 }
 
 function buildContext(gifts: Array<{
@@ -168,12 +190,25 @@ ${recentGifts.join("\n")}
 --- END CONTEXT ---`;
 }
 
-async function streamClaude(
+function extractApiError(raw: string, provider: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    const msg =
+      parsed?.error?.message ||           // Anthropic / OpenAI shape
+      parsed?.error?.error?.message ||     // nested
+      parsed?.message ||
+      null;
+    if (msg) return `${provider} API error: ${msg}`;
+  } catch { /* not JSON */ }
+  return `${provider} API error. Please check your API key and try again.`;
+}
+
+async function callClaude(
   system: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   model: string,
   apiKey: string,
-) {
+): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -181,54 +216,19 @@ async function streamClaude(
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      stream: true,
-      system,
-      messages,
-    }),
+    body: JSON.stringify({ model, max_tokens: 1024, stream: false, system, messages }),
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    return new Response(JSON.stringify({ error: err }), { status: 500 });
-  }
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) { controller.close(); break; }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            const text = parsed?.delta?.text ?? "";
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch { /* skip */ }
-        }
-      }
-    },
-  });
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" } });
+  if (!res.ok) throw new Error(extractApiError(await res.text(), "Claude"));
+  const data = await res.json();
+  return data?.content?.[0]?.text ?? "";
 }
 
-async function streamOpenAI(
+async function callOpenAI(
   system: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   model: string,
   apiKey: string,
-) {
+): Promise<string> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -237,55 +237,23 @@ async function streamOpenAI(
     },
     body: JSON.stringify({
       model,
-      stream: true,
-      messages: [
-        { role: "system", content: system },
-        ...messages,
-      ],
+      stream: false,
+      messages: [{ role: "system", content: system }, ...messages],
     }),
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    return new Response(JSON.stringify({ error: err }), { status: 500 });
-  }
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) { controller.close(); break; }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            const text = parsed?.choices?.[0]?.delta?.content ?? "";
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch { /* skip */ }
-        }
-      }
-    },
-  });
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" } });
+  if (!res.ok) throw new Error(extractApiError(await res.text(), "OpenAI"));
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content ?? "";
 }
 
-async function streamGemini(
+async function callGemini(
   system: string,
   messages: Array<{ role: "user" | "assistant"; content: string }>,
   model: string,
   apiKey: string,
-) {
+): Promise<string> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -298,35 +266,7 @@ async function streamGemini(
       }),
     }
   );
-
-  if (!res.ok) {
-    const err = await res.text();
-    return new Response(JSON.stringify({ error: err }), { status: 500 });
-  }
-
-  const encoder = new TextEncoder();
-  const readable = new ReadableStream({
-    async start(controller) {
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) { controller.close(); break; }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          try {
-            const parsed = JSON.parse(data);
-            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-            if (text) controller.enqueue(encoder.encode(text));
-          } catch { /* skip */ }
-        }
-      }
-    },
-  });
-  return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" } });
+  if (!res.ok) throw new Error(extractApiError(await res.text(), "Gemini"));
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }

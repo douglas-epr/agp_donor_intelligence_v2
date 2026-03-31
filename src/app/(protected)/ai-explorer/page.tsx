@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { savePrompt, saveAISettings, saveChatMessage } from "@/lib/supabase/actions";
+import { savePrompt, saveAISettings } from "@/lib/supabase/actions";
 import { useUploadContext } from "@/context/UploadContext";
 import type { AIProvider } from "@/lib/supabase/types";
 
@@ -417,11 +417,20 @@ export default function AiExplorerPage() {
     setInput("");
     setLoading(true);
 
-    const userMsg: Message = { role: "user", content: question };
-    setMessages((prev) => [...prev, userMsg]);
+    // Capture upload at send time — response belongs to this upload even if user switches
+    const uploadIdAtSend = selectedUploadId;
 
-    const assistantMsg: Message = { role: "assistant", content: "", streaming: true };
-    setMessages((prev) => [...prev, assistantMsg]);
+    // Capture history before adding optimistic messages
+    const historySnapshot = messages
+      .filter(m => !m.streaming)
+      .slice(-20)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: question },
+      { role: "assistant", content: "", streaming: true },
+    ]);
 
     try {
       const res = await fetch("/api/query", {
@@ -429,11 +438,8 @@ export default function AiExplorerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
-          uploadId: selectedUploadId ?? undefined,
-          history: messages
-            .filter(m => !m.streaming)
-            .slice(-20)
-            .map(m => ({ role: m.role, content: m.content })),
+          uploadId: uploadIdAtSend ?? undefined,
+          history: historySnapshot,
         }),
       });
 
@@ -443,31 +449,19 @@ export default function AiExplorerPage() {
           ...prev.slice(0, -1),
           { role: "assistant", content: `Error: ${err.error ?? "Something went wrong. Please check your AI settings."}` },
         ]);
-        setLoading(false);
         return;
       }
 
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
+      const { content } = await res.json() as { content: string };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        full += decoder.decode(value, { stream: true });
+      // Only update UI if still viewing the same upload; otherwise history reloads from DB on return
+      if (selectedUploadId === uploadIdAtSend) {
         setMessages((prev) => [
           ...prev.slice(0, -1),
-          { role: "assistant", content: full, streaming: true },
+          { role: "assistant", content },
         ]);
       }
-
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        { role: "assistant", content: full, streaming: false },
-      ]);
-      // Persist both messages to chat history (fire-and-forget)
-      saveChatMessage("user", question, selectedUploadId ?? null);
-      saveChatMessage("assistant", full, selectedUploadId ?? null);
+      // Messages are saved server-side by /api/query
     } catch {
       setMessages((prev) => [
         ...prev.slice(0, -1),
@@ -490,6 +484,18 @@ export default function AiExplorerPage() {
       setTimeout(() => { setShowEditModal(false); setEditMsg(""); }, 1000);
     }
     setEditSaving(false);
+  }
+
+  // Gate: waiting for AI settings to load
+  if (mounted && !aiLoaded) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="var(--color-secondary)" strokeWidth="4" />
+          <path className="opacity-75" fill="var(--color-secondary)" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+      </div>
+    );
   }
 
   // Gate: no upload selected

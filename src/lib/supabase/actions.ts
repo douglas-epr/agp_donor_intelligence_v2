@@ -144,7 +144,7 @@ export async function updateUploadFilename(id: string, filename: string) {
 
   const { error } = await supabase
     .from("uploads")
-    .update({ filename, updated_at: new Date().toISOString() })
+    .update({ filename })
     .eq("id", id)
     .eq("user_id", user.id);
   if (error) return { error: error.message };
