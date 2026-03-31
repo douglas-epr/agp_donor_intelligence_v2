@@ -39,7 +39,7 @@ export async function getUser() {
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
-export async function updateProfile(fullName: string) {
+export async function updateProfile(fullName: string, avatarUrl?: string | null) {
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return { error: "Not authenticated" };
@@ -49,9 +49,15 @@ export async function updateProfile(fullName: string) {
   });
   if (authError) return { error: authError.message };
 
+  const updatePayload: Record<string, unknown> = {
+    full_name: fullName,
+    updated_at: new Date().toISOString(),
+  };
+  if (avatarUrl !== undefined) updatePayload.avatar_url = avatarUrl;
+
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq("id", user.id);
   if (profileError) return { error: profileError.message };
 
@@ -93,22 +99,55 @@ export async function saveAISettings(settings: AISettingInput[]) {
   if (selectedCount > 1) return { error: "Only one AI provider can be selected at a time" };
 
   for (const setting of settings) {
-    const { error } = await supabase
+    // Manual upsert: select then insert or update (avoids needing a unique constraint)
+    const { data: existing } = await supabase
       .from("ai_settings")
-      .upsert(
-        {
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("type", setting.type)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await supabase
+        .from("ai_settings")
+        .update({
+          model: setting.model,
+          api_key: setting.api_key,
+          selected: setting.selected,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (error) return { error: `Failed to update ${setting.type}: ${error.message}` };
+    } else {
+      const { error } = await supabase
+        .from("ai_settings")
+        .insert({
           user_id: user.id,
           type: setting.type,
           model: setting.model,
           api_key: setting.api_key,
           selected: setting.selected,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,type" }
-      );
-    if (error) return { error: `Failed to save ${setting.type}: ${error.message}` };
+        });
+      if (error) return { error: `Failed to save ${setting.type}: ${error.message}` };
+    }
   }
 
+  return { success: true };
+}
+
+// ── Uploads ───────────────────────────────────────────────────────────────────
+
+export async function updateUploadFilename(id: string, filename: string) {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("uploads")
+    .update({ filename, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
   return { success: true };
 }
 

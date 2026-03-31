@@ -1,64 +1,47 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/supabase/actions";
 import { createClient } from "@/lib/supabase/client";
+import { UploadContextProvider } from "@/context/UploadContext";
 
-const NAV_ITEMS = [
-  {
-    label: "Overview",
-    href: "/dashboard",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-        <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-        <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-        <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-      </svg>
-    ),
-  },
-  {
-    label: "Upload",
-    href: "/upload",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M8 10V3M5 6l3-3 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        {active && <rect x="1" y="1" width="14" height="14" rx="2" fill="rgba(47,111,237,0.08)" />}
-      </svg>
-    ),
-  },
-  {
-    label: "AI Explorer",
-    href: "/ai-explorer",
-    icon: (active: boolean) => (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-        <path d="M5.5 9C5.5 9 6.5 10.5 8 10.5s2.5-1.5 2.5-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        <circle cx="6" cy="6.5" r="0.75" fill="currentColor" />
-        <circle cx="10" cy="6.5" r="0.75" fill="currentColor" />
-      </svg>
-    ),
-  },
+// Top-nav only items (not in sidebar)
+const TOP_NAV_ITEMS = [
+  { label: "Overview", href: "/dashboard" },
+  { label: "Upload", href: "/upload" },
+  { label: "AI Explorer", href: "/ai-explorer" },
 ];
 
 function getInitials(name: string) {
   return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
 }
 
-export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string; full_name: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; full_name: string; avatar_url: string | null } | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.replace("/login"); return; }
-      const full_name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "User";
-      setUser({ email: user.email ?? "", full_name });
+    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
+      if (!authUser) { router.replace("/login"); return; }
+      const full_name = (authUser.user_metadata?.full_name as string) || authUser.email?.split("@")[0] || "User";
+
+      // Load avatar_url from profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", authUser.id)
+        .maybeSingle();
+
+      setUser({
+        email: authUser.email ?? "",
+        full_name,
+        avatar_url: profile?.avatar_url ?? null,
+      });
     });
   }, [router]);
 
@@ -72,16 +55,16 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         style={{ width: 220, backgroundColor: "var(--color-surface)", borderRight: "1px solid var(--color-border)" }}
       >
         {/* Logo */}
-        <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--color-border)" }}>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-              <rect x="1" y="11" width="4" height="10" rx="1" fill="#2F6FED" />
-              <rect x="7" y="7" width="4" height="14" rx="1" fill="#1F3E77" />
-              <rect x="13" y="3" width="4" height="18" rx="1" fill="#9EDC4B" />
-              <path d="M18 5L21 2" stroke="#2F6FED" strokeWidth="2" strokeLinecap="round" />
-              <path d="M19 2L21 2L21 4" stroke="#2F6FED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="text-sm font-bold tracking-tight" style={{ color: "var(--color-primary)" }}>AGP Intelligence</span>
+        <div className="px-5 py-4 flex items-center justify-center" style={{ borderBottom: "1px solid var(--color-border)" }}>
+          <Link href="/dashboard" className="flex items-center justify-center">
+            <Image
+              src="/agp-logo.svg"
+              alt="AGP Intelligence"
+              width={140}
+              height={30}
+              priority
+              style={{ height: 28, width: "auto" }}
+            />
           </Link>
         </div>
 
@@ -94,12 +77,20 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-bg)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-              style={{ backgroundColor: "var(--color-secondary)" }}
-            >
-              {initials}
-            </div>
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.full_name}
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                style={{ backgroundColor: "var(--color-secondary)" }}
+              >
+                {initials}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: "var(--color-text)" }}>{user?.full_name ?? "Loading…"}</p>
               <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>{user?.email ?? ""}</p>
@@ -107,10 +98,17 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
 
-        {/* Nav items */}
+        {/* Nav items — sidebar only: Overview */}
         <nav className="flex-1 flex flex-col gap-0.5 px-3 py-2">
-          {NAV_ITEMS.map(({ label, href, icon }) => {
-            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+          {[{ label: "Overview", href: "/dashboard", icon: (active: boolean) => (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+            </svg>
+          )}].map(({ label, href, icon }) => {
+            const active = pathname === href;
             return (
               <Link
                 key={href}
@@ -174,7 +172,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           className="flex items-center px-6 shrink-0 gap-1"
           style={{ height: 52, backgroundColor: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}
         >
-          {NAV_ITEMS.map(({ label, href }) => {
+          {TOP_NAV_ITEMS.map(({ label, href }) => {
             const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
             return (
               <Link
@@ -196,5 +194,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <UploadContextProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </UploadContextProvider>
   );
 }

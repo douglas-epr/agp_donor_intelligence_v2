@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { savePrompt } from "@/lib/supabase/actions";
+import { useUploadContext } from "@/context/UploadContext";
 
 type Message = { role: "user" | "assistant"; content: string; streaming?: boolean };
 
@@ -15,6 +16,7 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export default function AiExplorerPage() {
+  const { selectedUploadId } = useUploadContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -79,7 +81,7 @@ export default function AiExplorerPage() {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, uploadId: selectedUploadId ?? undefined }),
       });
 
       if (!res.ok) {

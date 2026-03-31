@@ -2,21 +2,42 @@ import { createClient } from "@/lib/supabase/server";
 import type { DashboardAggregates } from "@/mocks/types";
 import { DonorSegment, GiftChannel } from "@/lib/constants/enums";
 
-// Fetch all KPIs and chart data for the authenticated user's most recent upload.
+// Fetch all KPIs and chart data for the authenticated user.
+// Pass uploadId to scope data to a specific upload; omit for aggregate across all uploads.
 // Falls back gracefully to zero-values if no data exists.
-export async function getDashboardData(): Promise<DashboardAggregates> {
+export async function getDashboardData(uploadId?: string): Promise<DashboardAggregates> {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return emptyAggregates();
 
-  // Fetch all valid gifts for this user
-  const { data: gifts, error } = await supabase
+  // If no uploadId given, default to the most recent upload
+  let resolvedUploadId = uploadId;
+  if (!resolvedUploadId) {
+    const { data: latest } = await supabase
+      .from("uploads")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    resolvedUploadId = latest?.id;
+  }
+
+  // Fetch valid gifts scoped to the resolved upload
+  let query = supabase
     .from("donor_gifts")
     .select("donor_id, gift_amount, gift_date, campaign, segment, channel, region")
     .eq("user_id", user.id)
     .eq("is_valid", true)
     .order("gift_date", { ascending: true });
+
+  if (resolvedUploadId) {
+    query = query.eq("upload_id", resolvedUploadId);
+  }
+
+  const { data: gifts, error } = await query;
 
   if (error || !gifts || gifts.length === 0) return emptyAggregates();
 
@@ -37,7 +58,9 @@ export async function getDashboardData(): Promise<DashboardAggregates> {
   const byMonth: Record<string, { currentYear: number; previousYear: number }> = {};
   MONTHS.forEach((m) => (byMonth[m] = { currentYear: 0, previousYear: 0 }));
 
-  const currentYear = new Date().getFullYear();
+  // Use the most recent year in the data as "current year" so mock/historical data always renders
+  const allYears = gifts.map((g) => new Date(g.gift_date).getFullYear()).filter((y) => !isNaN(y));
+  const currentYear = allYears.length ? Math.max(...allYears) : new Date().getFullYear();
   gifts.forEach((g) => {
     if (!g.gift_date) return;
     const d = new Date(g.gift_date);

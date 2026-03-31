@@ -19,7 +19,7 @@ async function getSupabase() {
 }
 
 export async function POST(req: Request) {
-  const { question } = await req.json() as { question: string };
+  const { question, uploadId } = await req.json() as { question: string; uploadId?: string };
   if (!question?.trim()) {
     return new Response(JSON.stringify({ error: "No question provided" }), { status: 400 });
   }
@@ -48,14 +48,33 @@ export async function POST(req: Request) {
     .eq("selected", true)
     .single();
 
-  // Build donor data context
-  const { data: gifts } = await supabase
+  // Build donor data context — scoped to selected upload if provided
+  let resolvedUploadId = uploadId;
+  if (!resolvedUploadId) {
+    const { data: latest } = await supabase
+      .from("uploads")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("status", "complete")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    resolvedUploadId = latest?.id;
+  }
+
+  let giftsQuery = supabase
     .from("donor_gifts")
     .select("donor_id, gift_amount, gift_date, campaign, segment, channel, region")
     .eq("user_id", user.id)
     .eq("is_valid", true)
     .order("gift_date", { ascending: false })
     .limit(500);
+
+  if (resolvedUploadId) {
+    giftsQuery = giftsQuery.eq("upload_id", resolvedUploadId);
+  }
+
+  const { data: gifts } = await giftsQuery;
 
   const context = buildContext(gifts ?? []);
 
