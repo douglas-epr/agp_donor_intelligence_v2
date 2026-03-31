@@ -73,7 +73,13 @@ export default function ProfilePage() {
     setAvatarUrl(urlWithCacheBust);
 
     const result = await updateProfile(fullName, publicUrl);
-    if (result?.error) setError(result.error);
+    if (result?.error) {
+      setError(result.error);
+    } else {
+      window.dispatchEvent(new CustomEvent("profile-updated", {
+        detail: { full_name: fullName, avatar_url: urlWithCacheBust },
+      }));
+    }
     setUploading(false);
   }
 
@@ -88,6 +94,9 @@ export default function ProfilePage() {
     } else {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+      window.dispatchEvent(new CustomEvent("profile-updated", {
+        detail: { full_name: fullName, avatar_url: avatarUrl ?? null },
+      }));
     }
     setSaving(false);
   }

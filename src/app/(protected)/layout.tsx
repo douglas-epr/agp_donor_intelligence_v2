@@ -46,6 +46,16 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     });
   }, [router]);
 
+  // Sync sidebar when profile page saves name or avatar
+  useEffect(() => {
+    function onProfileUpdated(e: Event) {
+      const { full_name, avatar_url } = (e as CustomEvent<{ full_name: string; avatar_url: string | null }>).detail;
+      setUser(prev => prev ? { ...prev, full_name, avatar_url } : prev);
+    }
+    window.addEventListener("profile-updated", onProfileUpdated);
+    return () => window.removeEventListener("profile-updated", onProfileUpdated);
+  }, []);
+
   const initials = user ? getInitials(user.full_name) : "…";
 
   return (
@@ -108,9 +118,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           <Link
             href="/profile"
             className="flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1"
-            style={{ color: "var(--color-text)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-bg)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            style={{
+              backgroundColor: pathname === "/profile" ? "rgba(47,111,237,0.08)" : "transparent",
+              color: "var(--color-text)",
+            }}
+            onMouseEnter={(e) => { if (pathname !== "/profile") e.currentTarget.style.backgroundColor = "var(--color-bg)"; }}
+            onMouseLeave={(e) => { if (pathname !== "/profile") e.currentTarget.style.backgroundColor = "transparent"; }}
           >
             {user?.avatar_url ? (
               <img
