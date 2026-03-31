@@ -190,6 +190,8 @@ export async function saveChatMessage(
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
 export async function savePrompt(name: string, description: string) {
+  if (!name?.trim() || name.length > 200) return { error: "Agent name must be 1–200 characters" };
+  if (!description?.trim() || description.length > 5000) return { error: "Description must be 1–5000 characters" };
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return { error: "Not authenticated" };

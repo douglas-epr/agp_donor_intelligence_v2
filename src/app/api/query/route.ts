@@ -25,6 +25,15 @@ export async function POST(req: Request) {
   if (!question?.trim()) {
     return Response.json({ error: "No question provided" }, { status: 400 });
   }
+  if (question.length > 2000) {
+    return Response.json({ error: "Question exceeds 2000 character limit" }, { status: 400 });
+  }
+  if (!Array.isArray(history) || history.length > 40) {
+    return Response.json({ error: "Invalid history" }, { status: 400 });
+  }
+  const safeHistory = history
+    .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map(m => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 4000) }));
 
   const supabase = await getSupabase();
   const { data: { user } } = await supabase.auth.getUser();
@@ -81,7 +90,7 @@ export async function POST(req: Request) {
   const fullSystem = `${systemPrompt}\n\n${context}`;
 
   // Build full messages array: prior conversation history + new question
-  const historyMessages = history.map(m => ({ role: m.role, content: m.content }));
+  const historyMessages = safeHistory.map(m => ({ role: m.role, content: m.content }));
   const allMessages: Array<{ role: "user" | "assistant"; content: string }> = [
     ...historyMessages,
     { role: "user", content: question },

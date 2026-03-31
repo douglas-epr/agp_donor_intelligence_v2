@@ -91,7 +91,9 @@ function validateRow(raw: Record<string, string>, index: number): ParsedRow {
 }
 
 function parseCSV(text: string): Record<string, string>[] {
+  if (text.length > 52_428_800) return []; // 50 MB hard limit
   const lines = text.trim().split(/\r?\n/);
+  if (lines.length > 100_001) return []; // 100k rows + header
   if (lines.length < 2) return [];
   const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
   return lines.slice(1).map((line) => {
