@@ -1,0 +1,201 @@
+donor_id,donor_name,segment,gift_date,gift_amount,campaign,channel,region
+D0024,Barbara Hill,Mid-Level,2023-08-29,2136.03,Giving Tuesday,Event,Northeast
+D0051,Karen White,Mid-Level,2023-02-17,794.56,Spring Drive,Online,Northeast
+D0019,Emily Garcia,Mid-Level,2024-10-06,1410.38,Spring Drive,Direct Mail,Midwest
+D0099,Dorothy Wilson,First-Time,2023-09-07,272.47,Spring Drive,Email,Midwest
+D0002,Ashley Anderson,Mid-Level,2023-04-20,2284.43,Annual Fund,Online,Northeast
+D0046,Sharon Hernandez,General,2024-12-13,205.92,Spring Drive,Online,Midwest
+D0143,Sharon Hill,Major Gifts,2023-05-05,8106.96,Year-End Appeal,Direct Mail,South
+D0136,Stephanie Perez,Sustainer,2024-09-01,148.49,Capital Campaign,Online,South
+D0157,Cynthia Lewis,General,2024-05-31,208.38,Year-End Appeal,Online,Northeast
+D0115,Michael Garcia,Lapsed,2024-05-01,907.49,Year-End Appeal,Event,Northeast
+D0071,Jacob Thomas,General,2024-06-17,197.31,Year-End Appeal,Email,Northeast
+D0071,Jacob Thomas,General,2024-12-31,123.97,Capital Campaign,Direct Mail,West
+D0086,Linda Hernandez,Lapsed,2024-07-07,387.74,Year-End Appeal,Direct Mail,Northeast
+D0060,Margaret Wright,Mid-Level,2023-06-06,1265.69,Giving Tuesday,Direct Mail,Midwest
+D0107,Melissa Jackson,Mid-Level,2024-07-09,1314.79,Year-End Appeal,Online,Midwest
+D0053,Michelle Young,Major Gifts,2024-02-03,21240.05,Annual Fund,Phone,Midwest
+D0006,Nicholas Hill,Major Gifts,2024-08-12,21776.47,Year-End Appeal,Online,Midwest
+D0091,Anna Brown,First-Time,2024-02-04,184.38,Annual Fund,Online,South
+D0138,Brian Adams,Lapsed,2024-07-13,772.76,Annual Fund,Phone,Northeast
+D0125,Ashley Nelson,Major Gifts,2024-03-22,7436.99,Year-End Appeal,Email,South
+D0087,James Harris,Sustainer,2024-02-19,108.61,Giving Tuesday,Direct Mail,South
+D0033,Ronald Adams,General,2024-06-30,245.66,Year-End Appeal,Online,Northeast
+D0145,Steven Williams,Lapsed,2023-03-27,696.7,Giving Tuesday,Online,Northeast
+D0119,Jason Scott,Major Gifts,2023-09-24,6588.9,Year-End Appeal,Event,Northeast
+D0117,Kevin Roberts,Mid-Level,2024-01-24,1153.36,Capital Campaign,Online,South
+D0065,Sandra Nguyen,Mid-Level,2024-04-26,2168.99,Year-End Appeal,Email,Northeast
+D0014,Dorothy Williams,General,2023-12-25,249.98,Spring Drive,Email,Midwest
+D0011,Karen Wilson,First-Time,2023-09-11,389.4,Spring Drive,Online,Midwest
+D0160,Andrew Allen,First-Time,2023-05-10,118.57,Year-End Appeal,Email,Midwest
+D0145,Steven Williams,Lapsed,2024-04-21,952.98,Giving Tuesday,Event,West
+D0043,Mary Baker,Major Gifts,2023-04-28,16132.59,Annual Fund,Online,Northeast
+D0080,Kimberly Robinson,Mid-Level,2023-01-27,716.09,Capital Campaign,Phone,Midwest
+D0097,Ashley Nguyen,Major Gifts,2023-07-23,11424.72,Year-End Appeal,Phone,Midwest
+D0063,Jessica Thomas,Mid-Level,2023-11-05,703.7,Annual Fund,Email,Northeast
+D0031,Margaret Torres,First-Time,2024-08-02,408.3,Annual Fund,Email,West
+D0137,William Roberts,Sustainer,2024-01-15,78.55,Year-End Appeal,Phone,Midwest
+D0088,Ryan Jackson,Lapsed,2024-03-06,111.39,Annual Fund,Online,Midwest
+D0111,Joseph Miller,Mid-Level,2024-10-12,2420.61,Annual Fund,Online,Midwest
+D0040,Christopher Baker,Lapsed,2024-06-18,491.94,Giving Tuesday,Event,Northeast
+D0138,Brian Adams,Lapsed,2024-04-21,797.18,Year-End Appeal,Online,Midwest
+D0152,Thomas Gonzalez,Lapsed,2023-09-09,341.56,Annual Fund,Email,West
+D0116,Kimberly Williams,Major Gifts,2024-04-20,7986.93,Spring Drive,Phone,Midwest
+D0098,David Clark,First-Time,2024-05-21,201.38,Annual Fund,Event,Northeast
+D0125,Ashley Nelson,Major Gifts,2023-09-22,7272.7,Capital Campaign,Event,Northeast
+D0071,Jacob Thomas,General,2024-06-13,150.05,Spring Drive,Email,Northeast
+D0105,Nicholas Taylor,Mid-Level,2023-09-04,1476.67,Giving Tuesday,Online,Midwest
+D0126,Amanda Roberts,Lapsed,2023-01-18,503.36,Year-End Appeal,Event,Northeast
+D0104,Barbara Wright,Mid-Level,2023-11-10,1882.88,Giving Tuesday,Phone,West
+D0122,Charles Ramirez,Mid-Level,2023-12-19,1606.39,Year-End Appeal,Email,Northeast
+D0085,Kathleen Wilson,Lapsed,2024-04-09,416.63,Capital Campaign,Event,West
+D0060,Margaret Wright,Mid-Level,2023-07-17,741.19,Capital Campaign,Email,Midwest
+D0138,Brian Adams,Lapsed,2024-12-07,955.79,Spring Drive,Direct Mail,Northeast
+D0124,Jennifer Thompson,Mid-Level,2024-08-26,1052.72,Annual Fund,Phone,Northeast
+D0073,Richard Nelson,Lapsed,2023-07-18,982.46,Capital Campaign,Direct Mail,West
+D0046,Sharon Hernandez,General,2024-12-26,93.01,Spring Drive,Direct Mail,West
+D0012,Susan Garcia,Lapsed,2024-07-20,976.87,Capital Campaign,Email,Northeast
+D0126,Amanda Roberts,Lapsed,2023-01-13,192.33,Spring Drive,Event,South
+D0123,Jennifer Martin,First-Time,2023-07-08,248.21,Year-End Appeal,Event,South
+D0030,Stephanie Moore,Major Gifts,2024-02-15,20997.6,Year-End Appeal,Email,Northeast
+D0014,Dorothy Williams,General,2024-07-30,59.14,Capital Campaign,Email,Northeast
+D0031,Margaret Torres,First-Time,2024-03-02,301.13,Spring Drive,Phone,Northeast
+D0058,Thomas Nelson,General,2024-01-25,199.53,Year-End Appeal,Online,West
+D0151,Michelle Sanchez,Sustainer,2023-11-09,148.75,Spring Drive,Phone,Midwest
+D0157,Cynthia Lewis,General,2023-04-12,241.02,Annual Fund,Direct Mail,Midwest
+D0055,Donald Brown,Mid-Level,2023-03-25,1029.03,Spring Drive,Direct Mail,Northeast
+D0142,Sharon Thompson,First-Time,2023-01-03,83.78,Year-End Appeal,Online,Midwest
+D0153,Timothy Baker,Mid-Level,2023-02-03,1439.36,Spring Drive,Event,Midwest
+D0073,Richard Nelson,Lapsed,2024-04-09,732.69,Year-End Appeal,Email,Northeast
+D0068,Kevin Jones,Mid-Level,2024-10-02,2074.87,Spring Drive,Email,Northeast
+D0109,Shirley Smith,Sustainer,2023-08-19,39.35,Giving Tuesday,Direct Mail,West
+D0037,George Anderson,Mid-Level,2023-06-19,642.75,Annual Fund,Event,Northeast
+D0146,James King,Mid-Level,2024-03-25,2341.46,Year-End Appeal,Online,Midwest
+D0078,Matthew Gonzalez,General,2023-10-06,182.44,Spring Drive,Phone,South
+D0113,Carol Wilson,Sustainer,2023-02-10,35.06,Year-End Appeal,Email,West
+D0155,Kenneth Jackson,Mid-Level,2023-04-04,1000.49,Spring Drive,Email,Northeast
+D0151,Michelle Sanchez,Sustainer,2024-11-19,143.85,Annual Fund,Event,Northeast
+D0011,Karen Wilson,First-Time,2023-06-29,393.4,Year-End Appeal,Phone,Midwest
+D0114,Nicholas Young,Sustainer,2023-07-05,139.51,Spring Drive,Online,Midwest
+D0126,Amanda Roberts,Lapsed,2024-04-26,972.15,Capital Campaign,Online,West
+D0083,Elizabeth Carter,Mid-Level,2023-06-14,1839.6,Capital Campaign,Online,Midwest
+D0127,Karen Thomas,Mid-Level,2024-02-15,1076.15,Annual Fund,Online,Northeast
+D0010,Jason Perez,Sustainer,2023-11-19,81.85,Capital Campaign,Event,Midwest
+D0104,Barbara Wright,Mid-Level,2023-01-02,2228.96,Giving Tuesday,Online,Northeast
+D0119,Jason Scott,Major Gifts,2023-07-12,11798.07,Spring Drive,Event,Northeast
+D0128,Daniel Clark,Major Gifts,2023-02-22,16571.7,Spring Drive,Event,Northeast
+D0034,Charles Taylor,Mid-Level,2024-03-24,2354.42,Giving Tuesday,Online,Midwest
+D0008,Mark Lewis,Sustainer,2024-09-15,146.64,Annual Fund,Direct Mail,Midwest
+D0041,William Harris,Lapsed,2023-01-15,379.68,Spring Drive,Online,Midwest
+D0058,Thomas Nelson,General,2023-04-27,248.26,Year-End Appeal,Email,Midwest
+D0040,Christopher Baker,Lapsed,2023-10-26,548.54,Spring Drive,Email,West
+D0107,Melissa Jackson,Mid-Level,2024-04-28,2168.61,Spring Drive,Online,Northeast
+D0038,Angela Young,Major Gifts,2024-09-05,11130.69,Spring Drive,Email,Northeast
+D0018,William Williams,Mid-Level,2024-02-29,1052.22,Capital Campaign,Online,Northeast
+D0069,Kimberly Nelson,General,2023-10-17,209.62,Giving Tuesday,Event,Northeast
+D0149,Jessica Campbell,Sustainer,2024-05-16,149.86,Annual Fund,Direct Mail,South
+D0138,Brian Adams,Lapsed,2023-12-07,535.91,Spring Drive,Online,Northeast
+D0097,Ashley Nguyen,Major Gifts,2023-11-26,12745.25,Annual Fund,Direct Mail,Midwest
+D0062,Jeffrey King,General,2023-08-28,153.65,Annual Fund,Online,South
+D0012,Susan Garcia,Lapsed,2024-04-29,386.36,Giving Tuesday,Online,South
+D0099,Dorothy Wilson,First-Time,2024-10-29,494.79,Spring Drive,Online,Midwest
+D0033,Ronald Adams,General,2024-08-27,138.02,Capital Campaign,Online,Midwest
+D0113,Carol Wilson,Sustainer,2024-04-12,37.46,Year-End Appeal,Email,Northeast
+D0105,Nicholas Taylor,Mid-Level,2023-06-08,2241.0,Year-End Appeal,Online,West
+D0087,James Harris,Sustainer,2024-02-12,102.91,Giving Tuesday,Email,West
+D0137,William Roberts,Sustainer,2023-11-21,72.5,Giving Tuesday,Email,South
+D0139,Jonathan Perez,Major Gifts,2023-03-12,3307.73,Spring Drive,Email,Midwest
+D0074,Amanda Ramirez,Lapsed,2023-04-03,997.68,Year-End Appeal,Email,Midwest
+D0026,Christopher Robinson,Lapsed,2024-12-11,499.31,Capital Campaign,Email,Midwest
+D0084,Lisa Clark,General,2023-10-28,204.13,Capital Campaign,Event,South
+D0038,Angela Young,Major Gifts,2024-02-26,7994.44,Spring Drive,Email,Northeast
+D0044,Jonathan Carter,Sustainer,2024-09-16,46.88,Annual Fund,Online,Northeast
+D0062,Jeffrey King,General,2024-08-20,136.98,Spring Drive,Direct Mail,South
+D0066,James Jones,Major Gifts,2024-11-13,12840.34,Year-End Appeal,Online,South
+D0074,Amanda Ramirez,Lapsed,2023-06-11,709.85,Year-End Appeal,Online,West
+D0151,Michelle Sanchez,Sustainer,2024-03-10,62.39,Giving Tuesday,Event,South
+D0078,Matthew Gonzalez,General,2024-01-29,69.82,Annual Fund,Online,Midwest
+D0061,Donna Sanchez,First-Time,2024-01-03,221.61,Spring Drive,Event,Midwest
+D0076,Richard Brown,Lapsed,2024-11-05,119.75,Year-End Appeal,Event,Midwest
+D0145,Steven Williams,Lapsed,2023-02-20,878.56,Spring Drive,Email,South
+D0074,Amanda Ramirez,Lapsed,2023-08-24,798.17,Spring Drive,Online,West
+D0057,William Carter,Mid-Level,2024-09-27,1772.6,Capital Campaign,Email,Midwest
+D0036,Jason Nguyen,Lapsed,2024-10-04,665.42,Giving Tuesday,Email,West
+D0113,Carol Wilson,Sustainer,2024-01-09,29.17,Giving Tuesday,Direct Mail,Midwest
+D0076,Richard Brown,Lapsed,2024-03-01,394.05,Spring Drive,Direct Mail,Northeast
+D0139,Jonathan Perez,Major Gifts,2024-01-10,22220.36,Spring Drive,Phone,West
+D0043,Mary Baker,Major Gifts,2024-05-08,8281.83,Annual Fund,Event,Midwest
+D0087,James Harris,Sustainer,2024-04-24,125.53,Year-End Appeal,Direct Mail,Northeast
+D0102,Ryan Lee,Major Gifts,2024-07-24,24263.57,Capital Campaign,Email,South
+D0004,Jason Williams,Major Gifts,2023-05-07,8450.32,Year-End Appeal,Event,Midwest
+D0068,Kevin Jones,Mid-Level,2024-10-15,1668.54,Capital Campaign,Email,Midwest
+D0060,Margaret Wright,Mid-Level,2024-09-26,1442.48,Spring Drive,Event,Northeast
+D0057,William Carter,Mid-Level,2024-10-12,1794.66,Annual Fund,Online,Midwest
+D0078,Matthew Gonzalez,General,2023-04-30,171.08,Spring Drive,Email,Midwest
+D0078,Matthew Gonzalez,General,2023-04-29,249.08,Year-End Appeal,Direct Mail,Northeast
+D0035,Ashley Mitchell,Sustainer,2024-01-15,73.58,Giving Tuesday,Email,Midwest
+D0139,Jonathan Perez,Major Gifts,2023-06-08,11930.35,Year-End Appeal,Email,Midwest
+D0126,Amanda Roberts,Lapsed,2023-10-14,654.09,Year-End Appeal,Email,West
+D0056,David Garcia,General,2023-08-30,124.76,Annual Fund,Event,Midwest
+D0095,Nancy Jones,Major Gifts,2024-10-22,14750.48,Capital Campaign,Email,South
+D0071,Jacob Thomas,General,2023-05-06,67.71,Annual Fund,Online,South
+D0024,Barbara Hill,Mid-Level,2024-10-19,1824.87,Giving Tuesday,Phone,Midwest
+D0013,Richard Thompson,First-Time,2023-09-07,404.06,Spring Drive,Online,Northeast
+D0053,Michelle Young,Major Gifts,2024-07-21,4043.73,Spring Drive,Phone,Northeast
+D0060,Margaret Wright,Mid-Level,2023-06-01,1156.79,Annual Fund,Phone,Midwest
+D0071,Jacob Thomas,General,2023-05-29,218.14,Spring Drive,Phone,West
+D0045,Carol Davis,Sustainer,2023-01-27,38.74,Spring Drive,Email,West
+D0061,Donna Sanchez,First-Time,2023-01-17,314.98,Spring Drive,Event,Midwest
+D0033,Ronald Adams,General,2024-06-22,191.89,Year-End Appeal,Email,Midwest
+D0122,Charles Ramirez,Mid-Level,2024-01-06,1396.1,Spring Drive,Phone,Midwest
+D0116,Kimberly Williams,Major Gifts,2024-09-21,13836.37,Year-End Appeal,Email,Midwest
+D0134,Brian Martin,Mid-Level,2024-10-20,1102.96,Year-End Appeal,Email,South
+D0103,Mary Robinson,Major Gifts,2023-04-21,12091.16,Year-End Appeal,Email,South
+D0019,Emily Garcia,Mid-Level,2023-11-26,2297.63,Spring Drive,Direct Mail,Midwest
+D0033,Ronald Adams,General,2024-10-10,86.88,Spring Drive,Phone,Midwest
+D0084,Lisa Clark,General,2024-09-03,110.7,Spring Drive,Event,South
+D0130,Edward Nelson,Mid-Level,2023-04-12,1710.25,Annual Fund,Email,Midwest
+D0142,Sharon Thompson,First-Time,2023-08-09,374.38,Year-End Appeal,Online,Northeast
+D0106,Brian Jones,Mid-Level,2024-04-09,1177.52,Year-End Appeal,Online,Midwest
+D0025,Jonathan Campbell,Mid-Level,2023-11-17,1124.78,Giving Tuesday,Event,West
+D0040,Christopher Baker,Lapsed,2024-04-30,718.14,Year-End Appeal,Email,Midwest
+D0024,Barbara Hill,Mid-Level,2024-01-17,1363.32,Annual Fund,Direct Mail,Northeast
+D0016,David Scott,Sustainer,2024-07-29,98.31,Spring Drive,Event,Midwest
+D0032,Margaret Adams,General,2024-11-12,117.43,Annual Fund,Online,Midwest
+D0014,Dorothy Williams,General,2024-09-06,242.89,Capital Campaign,Event,Midwest
+D0148,Kevin Flores,First-Time,2023-06-08,278.34,Giving Tuesday,Online,Northeast
+D0028,Michelle Roberts,Major Gifts,2024-07-23,10377.56,Capital Campaign,Email,West
+D0147,George Ramirez,Major Gifts,2024-03-15,7588.58,Annual Fund,Phone,Northeast
+D0158,Margaret Allen,General,2024-07-24,176.87,Year-End Appeal,Phone,Midwest
+D0069,Kimberly Nelson,General,2023-10-07,31.51,Giving Tuesday,Online,West
+D0087,James Harris,Sustainer,2023-07-05,68.88,Annual Fund,Direct Mail,Northeast
+D0103,Mary Robinson,Major Gifts,2024-10-10,4065.67,Year-End Appeal,Email,Midwest
+D0136,Stephanie Perez,Sustainer,2024-03-05,51.89,Year-End Appeal,Event,Northeast
+D0095,Nancy Jones,Major Gifts,2023-11-29,9511.84,Annual Fund,Phone,Northeast
+D0022,Christopher White,First-Time,2023-06-09,447.5,Spring Drive,Online,Northeast
+D0013,Richard Thompson,First-Time,2023-10-06,353.29,Year-End Appeal,Email,South
+D0125,Ashley Nelson,Major Gifts,2024-02-29,16159.21,Capital Campaign,Direct Mail,Northeast
+D0030,Stephanie Moore,Major Gifts,2023-04-24,10266.39,Capital Campaign,Email,Midwest
+D0152,Thomas Gonzalez,Lapsed,2024-11-14,537.97,Capital Campaign,Email,Northeast
+D0102,Ryan Lee,Major Gifts,2023-02-26,24650.03,Year-End Appeal,Direct Mail,West
+D0055,Donald Brown,Mid-Level,2023-09-19,2033.93,Capital Campaign,Event,Midwest
+D0002,Ashley Anderson,Mid-Level,2024-03-16,1494.27,Spring Drive,Direct Mail,South
+D0137,William Roberts,Sustainer,2024-05-27,112.96,Spring Drive,Online,Midwest
+D0091,Anna Brown,First-Time,2023-02-13,82.43,Year-End Appeal,Email,South
+D0020,Richard Harris,Sustainer,2024-08-12,132.76,Year-End Appeal,Phone,South
+D0107,Melissa Jackson,Mid-Level,2024-02-19,1078.74,Year-End Appeal,Event,Northeast
+D0159,Lisa Nelson,Major Gifts,2024-12-07,12852.18,Capital Campaign,Email,South
+D0028,Michelle Roberts,Major Gifts,2024-08-26,7974.62,Year-End Appeal,Phone,Midwest
+D0102,Ryan Lee,Major Gifts,2023-12-14,22086.8,Spring Drive,Event,Northeast
+D0020,Richard Harris,Sustainer,2023-04-27,88.81,Spring Drive,Phone,Northeast
+D0090,Emily Wilson,Major Gifts,2024-10-22,10399.74,Annual Fund,Direct Mail,Northeast
+D0027,Paul Green,Mid-Level,2023-07-22,792.74,Spring Drive,Phone,Northeast
+D0020,Richard Harris,Sustainer,2024-10-05,47.14,Year-End Appeal,Online,Northeast
+D0149,Jessica Campbell,Sustainer,2024-08-01,81.11,Giving Tuesday,Email,Northeast
+D0083,Elizabeth Carter,Mid-Level,2024-10-04,2227.63,Capital Campaign,Direct Mail,South
+D0018,William Williams,Mid-Level,2024-10-08,1437.37,Capital Campaign,Online,West
+D0152,Thomas Gonzalez,Lapsed,2024-06-03,150.55,Year-End Appeal,Event,South
+D0116,Kimberly Williams,Major Gifts,2024-01-13,3346.16,Annual Fund,Event,Midwest
+D0024,Barbara Hill,Mid-Level,2024-06-03,1729.4,Year-End Appeal,Online,Northeast
+D0142,Sharon Thompson,First-Time,2023-02-12,479.4,Year-End Appeal,Online,Northeast
+D0049,Nicholas Miller,Sustainer,2024-05-02,65.19,Spring Drive,Direct Mail,Midwest
