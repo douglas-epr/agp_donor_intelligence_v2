@@ -51,7 +51,6 @@ export async function updateProfile(fullName: string, avatarUrl?: string | null)
 
   const updatePayload: Record<string, unknown> = {
     full_name: fullName,
-    updated_at: new Date().toISOString(),
   };
   if (avatarUrl !== undefined) updatePayload.avatar_url = avatarUrl;
 
