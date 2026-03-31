@@ -13,16 +13,20 @@ function formatDate(iso: string) {
 }
 
 type Props = DashboardAggregates & {
-  maxCampaignTotal: number;
-  maxChannelTotal: number;
-  fmt: (n: number) => string;
   activeUploadId: string | null;
 };
 
+function fmt(n: number) {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `$${(n / 1_000).toFixed(0)}k`;
+  return `$${n.toLocaleString()}`;
+}
+
 export default function DashboardClient({
-  kpis, byCampaign, bySegment, byChannel, giftsByMonth,
-  maxCampaignTotal, maxChannelTotal, fmt, activeUploadId,
+  kpis, byCampaign, bySegment, byChannel, giftsByMonth, activeUploadId,
 }: Props) {
+  const maxCampaignTotal = byCampaign[0]?.totalRaised ?? 1;
+  const maxChannelTotal  = byChannel[0]?.totalRaised ?? 1;
   const router = useRouter();
   const { setSelectedUploadId } = useUploadContext();
   const [showHistorical, setShowHistorical] = useState(false);
