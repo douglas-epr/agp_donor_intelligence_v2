@@ -35,6 +35,7 @@ export default function DashboardClient({
   const { setSelectedUploadId } = useUploadContext();
   const contentRef = useRef<HTMLDivElement>(null);
   const [showHistorical, setShowHistorical] = useState(false);
+  const [uploadFilename, setUploadFilename] = useState<string | null>(null);
   const [uploads, setUploads] = useState<UploadRow[]>([]);
   const [uploadsLoading, setUploadsLoading] = useState(false);
 
@@ -61,6 +62,13 @@ export default function DashboardClient({
       });
     }
   }, [activeUploadId, setSelectedUploadId]); // router is stable — omitted intentionally
+
+  useEffect(() => {
+    if (!activeUploadId) { setUploadFilename(null); return; }
+    createClient()
+      .from("uploads").select("filename").eq("id", activeUploadId).single()
+      .then(({ data }) => { if (data) setUploadFilename(data.filename); });
+  }, [activeUploadId]);
 
   async function openHistorical() {
     setShowHistorical(true);
@@ -493,8 +501,16 @@ export default function DashboardClient({
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Executive Summary</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-            Institutional Intelligence · {activeUploadId ? "Historical View" : "Live Data"}
+          <p className="text-sm mt-0.5 flex items-center gap-2 flex-wrap" style={{ color: "var(--color-text-muted)" }}>
+            Institutional Intelligence
+            {uploadFilename && (
+              <span
+                className="px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{ backgroundColor: "rgba(47,111,237,0.08)", color: "var(--color-secondary)" }}
+              >
+                {uploadFilename}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2" data-pdf-hide>

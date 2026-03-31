@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { savePrompt, saveAISettings } from "@/lib/supabase/actions";
+import { savePrompt, saveAISettings, saveChatMessage } from "@/lib/supabase/actions";
 import { useUploadContext } from "@/context/UploadContext";
 import type { AIProvider } from "@/lib/supabase/types";
 
@@ -326,7 +326,7 @@ function AIConfigPopup({ onClose, onSaved }: AIConfigPopupProps) {
 }
 
 export default function AiExplorerPage() {
-  const { selectedUploadId } = useUploadContext();
+  const { selectedUploadId, setSelectedUploadId } = useUploadContext();
   const [mounted, setMounted] = useState(false);
   const [aiLoaded, setAiLoaded] = useState(false);
   const [showAIConfig, setShowAIConfig] = useState(false);
@@ -341,11 +341,16 @@ export default function AiExplorerPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
+  const [uploadFilename, setUploadFilename] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
+    // Sync ?upload= URL param to context on mount
+    const uploadParam = new URLSearchParams(window.location.search).get("upload");
+    if (uploadParam) setSelectedUploadId(uploadParam);
+
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setAiLoaded(true); return; }
@@ -377,7 +382,31 @@ export default function AiExplorerPage() {
       if (aiRow) setActiveProvider(`${aiRow.type} · ${aiRow.model}`);
       setAiLoaded(true);
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load upload filename + chat history whenever selected upload changes
+  useEffect(() => {
+    setMessages([]);
+    setUploadFilename(null);
+    if (!selectedUploadId) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: upload } = await supabase
+        .from("uploads").select("filename").eq("id", selectedUploadId).single();
+      if (upload) setUploadFilename(upload.filename);
+
+      const { data: rows } = await supabase
+        .from("chat")
+        .select("role, message")
+        .eq("user_id", user.id)
+        .eq("upload_id", selectedUploadId)
+        .order("created_at", { ascending: true });
+      if (rows) {
+        setMessages(rows.map(r => ({ role: r.role as "user" | "assistant", content: r.message })));
+      }
+    });
+  }, [selectedUploadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -398,7 +427,14 @@ export default function AiExplorerPage() {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, uploadId: selectedUploadId ?? undefined }),
+        body: JSON.stringify({
+          question,
+          uploadId: selectedUploadId ?? undefined,
+          history: messages
+            .filter(m => !m.streaming)
+            .slice(-20)
+            .map(m => ({ role: m.role, content: m.content })),
+        }),
       });
 
       if (!res.ok) {
@@ -429,6 +465,9 @@ export default function AiExplorerPage() {
         ...prev.slice(0, -1),
         { role: "assistant", content: full, streaming: false },
       ]);
+      // Persist both messages to chat history (fire-and-forget)
+      saveChatMessage("user", question, selectedUploadId ?? null);
+      saveChatMessage("assistant", full, selectedUploadId ?? null);
     } catch {
       setMessages((prev) => [
         ...prev.slice(0, -1),
@@ -543,6 +582,11 @@ export default function AiExplorerPage() {
                   Change
                 </button>
               </>
+            )}
+            {uploadFilename && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(158,220,75,0.12)", color: "#5a8a1e" }}>
+                {uploadFilename}
+              </span>
             )}
           </div>
         </div>

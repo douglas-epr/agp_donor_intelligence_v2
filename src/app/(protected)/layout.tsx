@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/supabase/actions";
 import { createClient } from "@/lib/supabase/client";
-import { UploadContextProvider } from "@/context/UploadContext";
+import { UploadContextProvider, useUploadContext } from "@/context/UploadContext";
 
 // Top-nav only items (not in sidebar)
 const TOP_NAV_ITEMS = [
@@ -22,6 +22,7 @@ function getInitials(name: string) {
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { selectedUploadId } = useUploadContext();
   const [user, setUser] = useState<{ email: string; full_name: string; avatar_url: string | null } | null>(null);
 
   useEffect(() => {
@@ -68,11 +69,45 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        {/* Profile group */}
-        <div className="px-3 pt-3 pb-1">
+        {/* Nav items — sidebar only: Overview */}
+        <nav className="flex-1 flex flex-col gap-0.5 px-3 py-2">
+          {[{ label: "Overview", href: "/dashboard", icon: (active: boolean) => (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+              <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
+            </svg>
+          )}].map(({ label, href, icon }) => {
+            const overviewPaths = ["/dashboard", "/upload", "/ai-explorer"];
+            const active = href === "/dashboard"
+              ? overviewPaths.some(p => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + "?"))
+              : pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: active ? "rgba(47,111,237,0.08)" : "transparent",
+                  color: active ? "var(--color-secondary)" : "var(--color-text-muted)",
+                }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = "var(--color-bg)"; }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = "transparent"; }}
+              >
+                {icon(active)}
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Bottom: Profile + Settings + Logout */}
+        <div className="px-3 pb-4 pt-3 flex flex-col gap-0.5" style={{ borderTop: "1px solid var(--color-border)" }}>
+          {/* Profile group */}
           <Link
             href="/profile"
-            className="flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors"
+            className="flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1"
             style={{ color: "var(--color-text)" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color-bg)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -96,40 +131,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
               <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>{user?.email ?? ""}</p>
             </div>
           </Link>
-        </div>
 
-        {/* Nav items — sidebar only: Overview */}
-        <nav className="flex-1 flex flex-col gap-0.5 px-3 py-2">
-          {[{ label: "Overview", href: "/dashboard", icon: (active: boolean) => (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-              <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-              <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-              <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill={active ? "rgba(47,111,237,0.15)" : "none"} />
-            </svg>
-          )}].map(({ label, href, icon }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={{
-                  backgroundColor: active ? "rgba(47,111,237,0.08)" : "transparent",
-                  color: active ? "var(--color-secondary)" : "var(--color-text-muted)",
-                }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = "var(--color-bg)"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = "transparent"; }}
-              >
-                {icon(active)}
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Bottom: Settings + Logout */}
-        <div className="px-3 pb-4 pt-3 flex flex-col gap-0.5" style={{ borderTop: "1px solid var(--color-border)" }}>
           <Link
             href="/settings"
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -167,29 +169,34 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* ── Main area ───────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top nav */}
-        <header
-          className="flex items-center px-6 shrink-0 gap-1"
-          style={{ height: 52, backgroundColor: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}
-        >
-          {TOP_NAV_ITEMS.map(({ label, href }) => {
-            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
-            return (
-              <Link
-                key={href}
-                href={href}
-                className="px-4 py-1.5 text-sm font-medium transition-colors relative"
-                style={{
-                  color: active ? "var(--color-secondary)" : "var(--color-text-muted)",
-                  borderBottom: active ? "2px solid var(--color-secondary)" : "2px solid transparent",
-                  borderRadius: 0,
-                }}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </header>
+        {/* Top nav — only on dashboard / upload / ai-explorer */}
+        {["/dashboard", "/upload", "/ai-explorer"].some(p => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p + "?")) && (
+          <header
+            className="flex items-center px-6 shrink-0 gap-1"
+            style={{ height: 52, backgroundColor: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}
+          >
+            {TOP_NAV_ITEMS.map(({ label, href }) => {
+              const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+              const dynamicHref = (href === "/upload" || href === "/ai-explorer") && selectedUploadId
+                ? `${href}?upload=${selectedUploadId}`
+                : href;
+              return (
+                <Link
+                  key={href}
+                  href={dynamicHref}
+                  className="px-4 py-1.5 text-sm font-medium transition-colors relative"
+                  style={{
+                    color: active ? "var(--color-secondary)" : "var(--color-text-muted)",
+                    borderBottom: active ? "2px solid var(--color-secondary)" : "2px solid transparent",
+                    borderRadius: 0,
+                  }}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </header>
+        )}
 
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>

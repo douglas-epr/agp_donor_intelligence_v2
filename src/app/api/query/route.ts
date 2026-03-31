@@ -19,7 +19,11 @@ async function getSupabase() {
 }
 
 export async function POST(req: Request) {
-  const { question, uploadId } = await req.json() as { question: string; uploadId?: string };
+  const { question, uploadId, history = [] } = await req.json() as {
+    question: string;
+    uploadId?: string;
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+  };
   if (!question?.trim()) {
     return new Response(JSON.stringify({ error: "No question provided" }), { status: 400 });
   }
@@ -78,7 +82,15 @@ export async function POST(req: Request) {
 
   const context = buildContext(gifts ?? []);
 
-  const userMessage = `${context}\n\nQuestion: ${question}`;
+  // Embed data context in the system prompt so all turns share it
+  const fullSystem = `${systemPrompt}\n\n${context}`;
+
+  // Build full messages array: prior conversation history + new question
+  const historyMessages = history.map(m => ({ role: m.role, content: m.content }));
+  const allMessages: Array<{ role: "user" | "assistant"; content: string }> = [
+    ...historyMessages,
+    { role: "user", content: question },
+  ];
 
   // Select provider
   const provider = aiSetting?.type ?? "Claude";
@@ -86,11 +98,11 @@ export async function POST(req: Request) {
   const apiKey = aiSetting?.api_key ?? process.env.ANTHROPIC_API_KEY ?? "";
 
   if (provider === "Claude") {
-    return streamClaude(systemPrompt, userMessage, model, apiKey);
+    return streamClaude(fullSystem, allMessages, model, apiKey);
   } else if (provider === "OpenAI") {
-    return streamOpenAI(systemPrompt, userMessage, model, apiKey);
+    return streamOpenAI(fullSystem, allMessages, model, apiKey);
   } else {
-    return streamGemini(systemPrompt, userMessage, model, apiKey);
+    return streamGemini(fullSystem, allMessages, model, apiKey);
   }
 }
 
@@ -156,7 +168,12 @@ ${recentGifts.join("\n")}
 --- END CONTEXT ---`;
 }
 
-async function streamClaude(system: string, message: string, model: string, apiKey: string) {
+async function streamClaude(
+  system: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  model: string,
+  apiKey: string,
+) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -169,7 +186,7 @@ async function streamClaude(system: string, message: string, model: string, apiK
       max_tokens: 1024,
       stream: true,
       system,
-      messages: [{ role: "user", content: message }],
+      messages,
     }),
   });
 
@@ -206,7 +223,12 @@ async function streamClaude(system: string, message: string, model: string, apiK
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" } });
 }
 
-async function streamOpenAI(system: string, message: string, model: string, apiKey: string) {
+async function streamOpenAI(
+  system: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  model: string,
+  apiKey: string,
+) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -218,7 +240,7 @@ async function streamOpenAI(system: string, message: string, model: string, apiK
       stream: true,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: message },
+        ...messages,
       ],
     }),
   });
@@ -256,7 +278,12 @@ async function streamOpenAI(system: string, message: string, model: string, apiK
   return new Response(readable, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" } });
 }
 
-async function streamGemini(system: string, message: string, model: string, apiKey: string) {
+async function streamGemini(
+  system: string,
+  messages: Array<{ role: "user" | "assistant"; content: string }>,
+  model: string,
+  apiKey: string,
+) {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
     {
@@ -264,7 +291,10 @@ async function streamGemini(system: string, message: string, model: string, apiK
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: message }] }],
+        contents: messages.map(m => ({
+          role: m.role === "user" ? "user" : "model",
+          parts: [{ text: m.content }],
+        })),
       }),
     }
   );

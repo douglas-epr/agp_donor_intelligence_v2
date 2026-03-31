@@ -194,6 +194,31 @@ export type Database = {
         }
         Relationships: []
       }
+      chat: {
+        Row: {
+          id: string
+          user_id: string
+          upload_id: string | null
+          role: "user" | "assistant"
+          message: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          upload_id?: string | null
+          role: "user" | "assistant"
+          message: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          message?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -203,6 +228,7 @@ export type Database = {
     }
     Enums: {
       ai_provider: "Gemini" | "OpenAI" | "Claude"
+      chat_role: "user" | "assistant"
     }
     CompositeTypes: {
       [_ in never]: never

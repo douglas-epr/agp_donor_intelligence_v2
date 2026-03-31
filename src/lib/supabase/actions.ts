@@ -167,6 +167,28 @@ export async function deleteUpload(id: string) {
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export async function saveChatMessage(
+  role: "user" | "assistant",
+  content: string,
+  uploadId: string | null,
+) {
+  const supabase = await createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: "Not authenticated" };
+  const { error } = await supabase.from("chat").insert({
+    user_id: user.id,
+    upload_id: uploadId ?? null,
+    role,
+    message: content,
+  });
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+// ── Prompt ────────────────────────────────────────────────────────────────────
+
 export async function savePrompt(name: string, description: string) {
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();

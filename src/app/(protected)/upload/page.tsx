@@ -137,8 +137,13 @@ export default function UploadPage() {
   const rejectedRows = rows.filter((r) => r.status === RowStatus.REJECTED);
 
   useEffect(() => {
+    // Sync ?upload= URL param to context so correct row highlights as active
+    const uploadParam = new URLSearchParams(window.location.search).get("upload");
+    if (uploadParam && uploadParam !== selectedUploadId) {
+      setSelectedUploadId(uploadParam);
+    }
     loadUploads();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadUploads() {
     setHistoryLoading(true);
