@@ -22,10 +22,20 @@ export async function signOut() {
 
 export async function forgotPassword(email: string) {
   const supabase = await createClient();
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "localhost:3000";
-  const protocol = host.includes("localhost") ? "http" : "https";
-  const redirectTo = `${protocol}://${host}/reset-password`;
+
+  // NEXT_PUBLIC_SITE_URL is set in Vercel env vars → always produces the correct
+  // production URL. Falls back to the request host for local dev.
+  let redirectTo = process.env.NEXT_PUBLIC_SITE_URL
+    ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/reset-password`
+    : null;
+
+  if (!redirectTo) {
+    const headersList = await headers();
+    const host = headersList.get("host") ?? "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    redirectTo = `${protocol}://${host}/reset-password`;
+  }
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) return { error: error.message };
   return { success: true };

@@ -56,6 +56,18 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("profile-updated", onProfileUpdated);
   }, []);
 
+  // Handle stale / invalidated sessions (e.g. after password reset)
+  // Without this, the browser logs "Invalid Refresh Token" errors indefinitely.
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        router.replace("/login");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
+
   const initials = user ? getInitials(user.full_name) : "…";
 
   return (
