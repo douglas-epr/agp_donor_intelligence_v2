@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Step = "loading" | "ready" | "success" | "error";
+type Step = "loading" | "ready" | "success";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("loading");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -23,33 +23,30 @@ export default function ResetPasswordPage() {
         recovered = true;
         setStep("ready");
       }
-
-      // Already logged-in user (non-recovery session) → send to dashboard
-      if (event === "SIGNED_IN" && !recovered) {
-        router.replace("/dashboard");
-      }
+      // NOTE: Do NOT redirect on SIGNED_IN here.
+      // Supabase fires SIGNED_IN immediately when exchangeCodeForSession completes,
+      // then fires PASSWORD_RECOVERY. Redirecting on SIGNED_IN would kick the user
+      // away before they can set a new password.
     });
 
     const code = new URLSearchParams(window.location.search).get("code");
 
     if (code) {
+      // Exchange the recovery code — triggers SIGNED_IN then PASSWORD_RECOVERY
       supabase.auth.exchangeCodeForSession(code).catch(() => {
         router.replace("/forgot-password");
       });
     } else {
-      // No recovery code — if session exists → dashboard, else → forgot-password
+      // No recovery code in URL — either already logged in or invalid link
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          router.replace("/dashboard");
-        } else {
-          router.replace("/forgot-password");
-        }
+        router.replace(session ? "/dashboard" : "/forgot-password");
       });
     }
 
+    // If PASSWORD_RECOVERY never fires the link is invalid/expired
     const timeout = setTimeout(() => {
       if (!recovered) router.replace("/forgot-password");
-    }, 5000);
+    }, 6000);
 
     return () => {
       subscription.unsubscribe();
@@ -62,7 +59,7 @@ export default function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!passwordsMatch) return;
-    setLoading(true);
+    setSubmitting(true);
     setError("");
 
     const supabase = createClient();
@@ -70,7 +67,7 @@ export default function ResetPasswordPage() {
 
     if (updateError) {
       setError(updateError.message);
-      setLoading(false);
+      setSubmitting(false);
     } else {
       setStep("success");
       router.push("/dashboard");
@@ -117,6 +114,7 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
+          {/* Loading */}
           {step === "loading" && (
             <div className="flex flex-col items-center gap-3 py-4">
               <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
@@ -129,6 +127,7 @@ export default function ResetPasswordPage() {
             </div>
           )}
 
+          {/* Success */}
           {step === "success" && (
             <div className="flex flex-col items-center gap-4 py-2">
               <div
@@ -140,16 +139,13 @@ export default function ResetPasswordPage() {
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>
-                  Password updated
-                </p>
-                <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-                  Redirecting to dashboard…
-                </p>
+                <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>Password updated</p>
+                <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>Redirecting to dashboard…</p>
               </div>
             </div>
           )}
 
+          {/* Form */}
           {step === "ready" && (
             <>
               {error && (
@@ -180,11 +176,7 @@ export default function ResetPasswordPage() {
                     required
                     minLength={8}
                     className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
-                    style={{
-                      borderColor: "var(--color-border)",
-                      backgroundColor: "var(--color-bg)",
-                      color: "var(--color-text)",
-                    }}
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}
                     onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
                   />
@@ -224,11 +216,11 @@ export default function ResetPasswordPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || !passwordsMatch}
+                  disabled={submitting || !passwordsMatch}
                   className="w-full py-2.5 rounded-md text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
                   style={{ backgroundColor: "var(--color-secondary)" }}
                 >
-                  {loading ? (
+                  {submitting ? (
                     <>
                       <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4" />

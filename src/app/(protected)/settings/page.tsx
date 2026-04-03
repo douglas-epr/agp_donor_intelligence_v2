@@ -13,17 +13,41 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
   Gemini: "gemini-1.5-pro",
 };
 
+const inputCls = "w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all";
+const inputStyle = { borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text)" };
+const onFocus = (e: React.FocusEvent<HTMLInputElement>) => (e.currentTarget.style.borderColor = "var(--color-secondary)");
+const onBlur  = (e: React.FocusEvent<HTMLInputElement>) => (e.currentTarget.style.borderColor = "var(--color-border)");
+
+function Feedback({ msg }: { msg: { type: "success" | "error"; text: string } | null }) {
+  if (!msg) return null;
+  return (
+    <div
+      className="px-3 py-2 rounded-md text-sm"
+      style={{
+        backgroundColor: msg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)",
+        color: msg.type === "error" ? "var(--color-error)" : "#5a8a1e",
+        border: `1px solid ${msg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}`,
+      }}
+    >
+      {msg.text}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
-  // Account section
   const [userEmail, setUserEmail] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+
+  // Email section
   const [emailCurrentPw, setEmailCurrentPw] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [emailSaving, setEmailSaving] = useState(false);
+
+  // Password section
+  const [pwCurrentPw, setPwCurrentPw] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [pwCurrentPw, setPwCurrentPw] = useState("");
-  const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [emailSaving, setEmailSaving] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
 
   // AI section
@@ -36,32 +60,33 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const supabase = createClient();
-
-    // Load current user email for re-authentication
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setUserEmail(user.email);
     });
-
-    supabase
-      .from("ai_settings")
-      .select("*")
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setAiRows(
-            PROVIDERS.map((type) => {
-              const existing = data.find((r) => r.type === type);
-              return {
-                type,
-                model: existing?.model || DEFAULT_MODELS[type],
-                api_key: existing?.api_key || "",
-                selected: existing?.selected ?? false,
-              };
-            })
-          );
-        }
-        setLoading(false);
-      });
+    supabase.from("ai_settings").select("*").then(({ data }) => {
+      if (data && data.length > 0) {
+        setAiRows(
+          PROVIDERS.map((type) => {
+            const existing = data.find((r) => r.type === type);
+            return {
+              type,
+              model: existing?.model || DEFAULT_MODELS[type],
+              api_key: existing?.api_key || "",
+              selected: existing?.selected ?? false,
+            };
+          })
+        );
+      }
+      setLoading(false);
+    });
   }, []);
+
+  async function verifyCurrentPassword(password: string): Promise<boolean> {
+    if (!userEmail) return false;
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password });
+    return !error;
+  }
 
   function canSelectAI(type: AIProvider) {
     const row = aiRows.find((r) => r.type === type);
@@ -77,69 +102,45 @@ export default function SettingsPage() {
     setAiRows((prev) => prev.map((r) => (r.type === type ? { ...r, [field]: value } : r)));
   }
 
-  async function verifyCurrentPassword(password: string): Promise<boolean> {
-    if (!userEmail) return false;
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password });
-    return !error;
-  }
-
   async function handleEmailSave(e: React.FormEvent) {
     e.preventDefault();
     setEmailSaving(true);
     setEmailMsg(null);
-
     const valid = await verifyCurrentPassword(emailCurrentPw);
     if (!valid) {
       setEmailMsg({ type: "error", text: "Current password is incorrect." });
       setEmailSaving(false);
       return;
     }
-
     const result = await updateEmail(newEmail);
     setEmailMsg(
       result?.error
         ? { type: "error", text: result.error }
         : { type: "success", text: "Confirmation sent to new email address." }
     );
-    if (!result?.error) {
-      setNewEmail("");
-      setEmailCurrentPw("");
-    }
+    if (!result?.error) { setNewEmail(""); setEmailCurrentPw(""); }
     setEmailSaving(false);
   }
 
   async function handlePasswordSave(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setPwMsg({ type: "error", text: "Passwords do not match." });
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPwMsg({ type: "error", text: "Password must be at least 8 characters." });
-      return;
-    }
+    if (newPassword !== confirmPassword) { setPwMsg({ type: "error", text: "Passwords do not match." }); return; }
+    if (newPassword.length < 8) { setPwMsg({ type: "error", text: "Password must be at least 8 characters." }); return; }
     setPwSaving(true);
     setPwMsg(null);
-
     const valid = await verifyCurrentPassword(pwCurrentPw);
     if (!valid) {
       setPwMsg({ type: "error", text: "Current password is incorrect." });
       setPwSaving(false);
       return;
     }
-
     const result = await updatePassword(newPassword);
     setPwMsg(
       result?.error
         ? { type: "error", text: result.error }
         : { type: "success", text: "Password updated successfully." }
     );
-    if (!result?.error) {
-      setNewPassword("");
-      setConfirmPassword("");
-      setPwCurrentPw("");
-    }
+    if (!result?.error) { setNewPassword(""); setConfirmPassword(""); setPwCurrentPw(""); }
     setPwSaving(false);
   }
 
@@ -148,11 +149,7 @@ export default function SettingsPage() {
     setAiSaving(true);
     setAiMsg(null);
     const result = await saveAISettings(aiRows);
-    if (result?.error) {
-      setAiMsg({ type: "error", text: result.error });
-      setAiSaving(false);
-      return;
-    }
+    if (result?.error) { setAiMsg({ type: "error", text: result.error }); setAiSaving(false); return; }
 
     const selected = aiRows.find((r) => r.selected);
     if (selected) {
@@ -176,54 +173,6 @@ export default function SettingsPage() {
     setAiSaving(false);
   }
 
-  const inputStyle = {
-    borderColor: "var(--color-border)",
-    backgroundColor: "var(--color-bg)",
-    color: "var(--color-text)",
-  };
-
-  function InputField({ id, type = "text", value, onChange, placeholder, required, minLength }: {
-    id?: string;
-    type?: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder: string;
-    required?: boolean;
-    minLength?: number;
-  }) {
-    return (
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        required={required}
-        minLength={minLength}
-        className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
-        style={inputStyle}
-        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
-        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
-      />
-    );
-  }
-
-  function Feedback({ msg }: { msg: { type: "success" | "error"; text: string } | null }) {
-    if (!msg) return null;
-    return (
-      <div
-        className="px-3 py-2 rounded-md text-sm"
-        style={{
-          backgroundColor: msg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)",
-          color: msg.type === "error" ? "var(--color-error)" : "#5a8a1e",
-          border: `1px solid ${msg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}`,
-        }}
-      >
-        {msg.text}
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-2xl flex flex-col gap-6">
       <div>
@@ -244,24 +193,30 @@ export default function SettingsPage() {
             New Email Address
           </label>
           <Feedback msg={emailMsg} />
-          <InputField
+          <input
             type="password"
+            autoComplete="current-password"
             value={emailCurrentPw}
-            onChange={setEmailCurrentPw}
+            onChange={(e) => setEmailCurrentPw(e.target.value)}
             placeholder="Current password"
             required
+            className={inputCls}
+            style={inputStyle}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
           <div className="flex gap-3">
             <input
               type="email"
+              autoComplete="email"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="new@email.com"
               required
               className="flex-1 px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
               style={inputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+              onFocus={onFocus}
+              onBlur={onBlur}
             />
             <button
               type="submit"
@@ -282,34 +237,45 @@ export default function SettingsPage() {
             Change Password
           </label>
           <Feedback msg={pwMsg} />
-          <InputField
+          <input
             type="password"
+            autoComplete="current-password"
             value={pwCurrentPw}
-            onChange={setPwCurrentPw}
+            onChange={(e) => setPwCurrentPw(e.target.value)}
             placeholder="Current password"
             required
-          />
-          <InputField
-            type="password"
-            value={newPassword}
-            onChange={setNewPassword}
-            placeholder="New password (min. 8 characters)"
-            required
-            minLength={8}
+            className={inputCls}
+            style={inputStyle}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
           <input
             type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="New password (min. 8 characters)"
+            required
+            minLength={8}
+            className={inputCls}
+            style={inputStyle}
+            onFocus={onFocus}
+            onBlur={onBlur}
+          />
+          <input
+            type="password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Confirm new password"
             required
-            className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
+            className={inputCls}
             style={{
               borderColor: confirmPassword && confirmPassword !== newPassword ? "var(--color-error)" : "var(--color-border)",
               backgroundColor: "var(--color-bg)",
               color: "var(--color-text)",
             }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+            onFocus={onFocus}
             onBlur={(e) => (e.currentTarget.style.borderColor = confirmPassword && confirmPassword !== newPassword ? "var(--color-error)" : "var(--color-border)")}
           />
           <button
@@ -349,23 +315,21 @@ export default function SettingsPage() {
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => selectAI(row.type)}
-                      disabled={!selectable}
-                      className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
+                  <button
+                    type="button"
+                    onClick={() => selectAI(row.type)}
+                    disabled={!selectable}
+                    className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                      style={{ borderColor: row.selected ? "var(--color-secondary)" : "var(--color-border)" }}
                     >
-                      <div
-                        className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                        style={{ borderColor: row.selected ? "var(--color-secondary)" : "var(--color-border)" }}
-                      >
-                        {row.selected && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
-                      </div>
-                      {row.type}
-                    </button>
-                  </div>
+                      {row.selected && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
+                    </div>
+                    {row.type}
+                  </button>
                   {row.selected && (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.12)", color: "var(--color-secondary)" }}>
                       Active
