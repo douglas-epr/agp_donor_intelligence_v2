@@ -18,16 +18,13 @@ export default function ResetPasswordPage() {
     const supabase = createClient();
     let recovered = false;
 
-    // Listen for the PASSWORD_RECOVERY event. This fires after the
-    // recovery token has been exchanged via the ?code= param below.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         recovered = true;
         setStep("ready");
       }
 
-      // If a SIGNED_IN event fires WITHOUT PASSWORD_RECOVERY (meaning the
-      // user is already logged in via a regular session), send them away.
+      // Already logged-in user (non-recovery session) → send to dashboard
       if (event === "SIGNED_IN" && !recovered) {
         router.replace("/dashboard");
       }
@@ -36,15 +33,11 @@ export default function ResetPasswordPage() {
     const code = new URLSearchParams(window.location.search).get("code");
 
     if (code) {
-      // PKCE flow: exchange the recovery code for a session.
-      // This triggers the PASSWORD_RECOVERY auth state change above.
       supabase.auth.exchangeCodeForSession(code).catch(() => {
         router.replace("/forgot-password");
       });
     } else {
-      // No recovery code in URL — check whether the user already has a session.
-      // If they do, they shouldn't be here; send them to the dashboard.
-      // If they don't, the link is missing — send them to forgot-password.
+      // No recovery code — if session exists → dashboard, else → forgot-password
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
           router.replace("/dashboard");
@@ -54,11 +47,8 @@ export default function ResetPasswordPage() {
       });
     }
 
-    // If no PASSWORD_RECOVERY event fires within 5 s the link is invalid/expired.
     const timeout = setTimeout(() => {
-      if (!recovered) {
-        router.replace("/forgot-password");
-      }
+      if (!recovered) router.replace("/forgot-password");
     }, 5000);
 
     return () => {
@@ -67,16 +57,11 @@ export default function ResetPasswordPage() {
     };
   }, [router]);
 
+  const passwordsMatch = password.length >= 8 && confirm.length > 0 && password === confirm;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
+    if (!passwordsMatch) return;
     setLoading(true);
     setError("");
 
@@ -230,12 +215,17 @@ export default function ResetPasswordPage() {
                     onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
                     onBlur={(e) => (e.currentTarget.style.borderColor = confirm && confirm !== password ? "var(--color-error)" : "var(--color-border)")}
                   />
+                  {confirm && !passwordsMatch && (
+                    <p className="text-xs" style={{ color: "var(--color-error)" }}>
+                      {password.length < 8 ? "Password must be at least 8 characters" : "Passwords do not match"}
+                    </p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 rounded-md text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-70"
+                  disabled={loading || !passwordsMatch}
+                  className="w-full py-2.5 rounded-md text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-40"
                   style={{ backgroundColor: "var(--color-secondary)" }}
                 >
                   {loading ? (
@@ -247,7 +237,7 @@ export default function ResetPasswordPage() {
                       Updating…
                     </>
                   ) : (
-                    "Save New Password"
+                    "Update Password"
                   )}
                 </button>
               </form>

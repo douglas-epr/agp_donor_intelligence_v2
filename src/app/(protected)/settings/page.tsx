@@ -15,9 +15,12 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
 
 export default function SettingsPage() {
   // Account section
+  const [userEmail, setUserEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPw, setEmailCurrentPw] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwCurrentPw, setPwCurrentPw] = useState("");
   const [emailMsg, setEmailMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pwMsg, setPwMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [emailSaving, setEmailSaving] = useState(false);
@@ -33,6 +36,12 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const supabase = createClient();
+
+    // Load current user email for re-authentication
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email);
+    });
+
     supabase
       .from("ai_settings")
       .select("*")
@@ -68,24 +77,69 @@ export default function SettingsPage() {
     setAiRows((prev) => prev.map((r) => (r.type === type ? { ...r, [field]: value } : r)));
   }
 
+  async function verifyCurrentPassword(password: string): Promise<boolean> {
+    if (!userEmail) return false;
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password });
+    return !error;
+  }
+
   async function handleEmailSave(e: React.FormEvent) {
     e.preventDefault();
     setEmailSaving(true);
     setEmailMsg(null);
+
+    const valid = await verifyCurrentPassword(emailCurrentPw);
+    if (!valid) {
+      setEmailMsg({ type: "error", text: "Current password is incorrect." });
+      setEmailSaving(false);
+      return;
+    }
+
     const result = await updateEmail(newEmail);
-    setEmailMsg(result?.error ? { type: "error", text: result.error } : { type: "success", text: "Confirmation sent to new email address." });
+    setEmailMsg(
+      result?.error
+        ? { type: "error", text: result.error }
+        : { type: "success", text: "Confirmation sent to new email address." }
+    );
+    if (!result?.error) {
+      setNewEmail("");
+      setEmailCurrentPw("");
+    }
     setEmailSaving(false);
   }
 
   async function handlePasswordSave(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword !== confirmPassword) { setPwMsg({ type: "error", text: "Passwords do not match." }); return; }
-    if (newPassword.length < 8) { setPwMsg({ type: "error", text: "Password must be at least 8 characters." }); return; }
+    if (newPassword !== confirmPassword) {
+      setPwMsg({ type: "error", text: "Passwords do not match." });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPwMsg({ type: "error", text: "Password must be at least 8 characters." });
+      return;
+    }
     setPwSaving(true);
     setPwMsg(null);
+
+    const valid = await verifyCurrentPassword(pwCurrentPw);
+    if (!valid) {
+      setPwMsg({ type: "error", text: "Current password is incorrect." });
+      setPwSaving(false);
+      return;
+    }
+
     const result = await updatePassword(newPassword);
-    setPwMsg(result?.error ? { type: "error", text: result.error } : { type: "success", text: "Password updated successfully." });
-    if (!result?.error) { setNewPassword(""); setConfirmPassword(""); }
+    setPwMsg(
+      result?.error
+        ? { type: "error", text: result.error }
+        : { type: "success", text: "Password updated successfully." }
+    );
+    if (!result?.error) {
+      setNewPassword("");
+      setConfirmPassword("");
+      setPwCurrentPw("");
+    }
     setPwSaving(false);
   }
 
@@ -100,7 +154,6 @@ export default function SettingsPage() {
       return;
     }
 
-    // Validate the selected provider's API key
     const selected = aiRows.find((r) => r.selected);
     if (selected) {
       const validateRes = await fetch("/api/validate-ai", {
@@ -123,6 +176,54 @@ export default function SettingsPage() {
     setAiSaving(false);
   }
 
+  const inputStyle = {
+    borderColor: "var(--color-border)",
+    backgroundColor: "var(--color-bg)",
+    color: "var(--color-text)",
+  };
+
+  function InputField({ id, type = "text", value, onChange, placeholder, required, minLength }: {
+    id?: string;
+    type?: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder: string;
+    required?: boolean;
+    minLength?: number;
+  }) {
+    return (
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        minLength={minLength}
+        className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
+        style={inputStyle}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+      />
+    );
+  }
+
+  function Feedback({ msg }: { msg: { type: "success" | "error"; text: string } | null }) {
+    if (!msg) return null;
+    return (
+      <div
+        className="px-3 py-2 rounded-md text-sm"
+        style={{
+          backgroundColor: msg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)",
+          color: msg.type === "error" ? "var(--color-error)" : "#5a8a1e",
+          border: `1px solid ${msg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}`,
+        }}
+      >
+        {msg.text}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl flex flex-col gap-6">
       <div>
@@ -139,12 +240,17 @@ export default function SettingsPage() {
 
         {/* Change Email */}
         <form onSubmit={handleEmailSave} className="flex flex-col gap-3">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>New Email Address</label>
-          {emailMsg && (
-            <div className="px-3 py-2 rounded-md text-sm" style={{ backgroundColor: emailMsg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)", color: emailMsg.type === "error" ? "var(--color-error)" : "#5a8a1e", border: `1px solid ${emailMsg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}` }}>
-              {emailMsg.text}
-            </div>
-          )}
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+            New Email Address
+          </label>
+          <Feedback msg={emailMsg} />
+          <InputField
+            type="password"
+            value={emailCurrentPw}
+            onChange={setEmailCurrentPw}
+            placeholder="Current password"
+            required
+          />
           <div className="flex gap-3">
             <input
               type="email"
@@ -153,11 +259,16 @@ export default function SettingsPage() {
               placeholder="new@email.com"
               required
               className="flex-1 px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
-              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}
+              style={inputStyle}
               onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
             />
-            <button type="submit" disabled={emailSaving} className="px-4 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 shrink-0" style={{ backgroundColor: "var(--color-secondary)" }}>
+            <button
+              type="submit"
+              disabled={emailSaving}
+              className="px-4 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 shrink-0"
+              style={{ backgroundColor: "var(--color-secondary)" }}
+            >
               {emailSaving ? "Saving…" : "Update Email"}
             </button>
           </div>
@@ -167,23 +278,24 @@ export default function SettingsPage() {
 
         {/* Change Password */}
         <form onSubmit={handlePasswordSave} className="flex flex-col gap-3">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>Change Password</label>
-          {pwMsg && (
-            <div className="px-3 py-2 rounded-md text-sm" style={{ backgroundColor: pwMsg.type === "error" ? "#FEF2F2" : "rgba(158,220,75,0.1)", color: pwMsg.type === "error" ? "var(--color-error)" : "#5a8a1e", border: `1px solid ${pwMsg.type === "error" ? "#FECACA" : "rgba(158,220,75,0.4)"}` }}>
-              {pwMsg.text}
-            </div>
-          )}
-          <input
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
+            Change Password
+          </label>
+          <Feedback msg={pwMsg} />
+          <InputField
+            type="password"
+            value={pwCurrentPw}
+            onChange={setPwCurrentPw}
+            placeholder="Current password"
+            required
+          />
+          <InputField
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={setNewPassword}
             placeholder="New password (min. 8 characters)"
             required
             minLength={8}
-            className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
-            style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
           />
           <input
             type="password"
@@ -192,11 +304,20 @@ export default function SettingsPage() {
             placeholder="Confirm new password"
             required
             className="w-full px-3 py-2.5 text-sm rounded-md border outline-none transition-all"
-            style={{ borderColor: confirmPassword && confirmPassword !== newPassword ? "var(--color-error)" : "var(--color-border)", backgroundColor: "var(--color-bg)", color: "var(--color-text)" }}
+            style={{
+              borderColor: confirmPassword && confirmPassword !== newPassword ? "var(--color-error)" : "var(--color-border)",
+              backgroundColor: "var(--color-bg)",
+              color: "var(--color-text)",
+            }}
             onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = confirmPassword && confirmPassword !== newPassword ? "var(--color-error)" : "var(--color-border)")}
           />
-          <button type="submit" disabled={pwSaving} className="px-5 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 self-start" style={{ backgroundColor: "var(--color-secondary)" }}>
+          <button
+            type="submit"
+            disabled={pwSaving}
+            className="px-5 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 self-start"
+            style={{ backgroundColor: "var(--color-secondary)" }}
+          >
             {pwSaving ? "Saving…" : "Update Password"}
           </button>
         </form>
@@ -219,70 +340,71 @@ export default function SettingsPage() {
           {aiRows.map((row) => {
             const selectable = canSelectAI(row.type);
             return (
-            <div
-              key={row.type}
-              className="rounded-lg p-4 flex flex-col gap-3 transition-all"
-              style={{
-                border: `1px solid ${row.selected ? "var(--color-secondary)" : "var(--color-border)"}`,
-                backgroundColor: row.selected ? "rgba(47,111,237,0.04)" : "var(--color-bg)",
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => selectAI(row.type)}
-                    disabled={!selectable}
-                    className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
-                  >
-                    <div
-                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                      style={{ borderColor: row.selected ? "var(--color-secondary)" : "var(--color-border)" }}
+              <div
+                key={row.type}
+                className="rounded-lg p-4 flex flex-col gap-3 transition-all"
+                style={{
+                  border: `1px solid ${row.selected ? "var(--color-secondary)" : "var(--color-border)"}`,
+                  backgroundColor: row.selected ? "rgba(47,111,237,0.04)" : "var(--color-bg)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => selectAI(row.type)}
+                      disabled={!selectable}
+                      className="flex items-center gap-2.5 font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ color: row.selected ? "var(--color-secondary)" : "var(--color-text)" }}
                     >
-                      {row.selected && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
-                    </div>
-                    {row.type}
-                  </button>
+                      <div
+                        className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
+                        style={{ borderColor: row.selected ? "var(--color-secondary)" : "var(--color-border)" }}
+                      >
+                        {row.selected && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--color-secondary)" }} />}
+                      </div>
+                      {row.type}
+                    </button>
+                  </div>
+                  {row.selected && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.12)", color: "var(--color-secondary)" }}>
+                      Active
+                    </span>
+                  )}
                 </div>
-                {row.selected && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(47,111,237,0.12)", color: "var(--color-secondary)" }}>
-                    Active
-                  </span>
-                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Model</label>
+                    <input
+                      type="text"
+                      value={row.model}
+                      onChange={(e) => updateAIRow(row.type, "model", e.target.value)}
+                      placeholder={DEFAULT_MODELS[row.type]}
+                      disabled={loading}
+                      className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
+                      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>API Key</label>
+                    <input
+                      type="password"
+                      value={row.api_key}
+                      onChange={(e) => updateAIRow(row.type, "api_key", e.target.value)}
+                      placeholder="sk-..."
+                      disabled={loading}
+                      className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
+                      style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Model</label>
-                  <input
-                    type="text"
-                    value={row.model}
-                    onChange={(e) => updateAIRow(row.type, "model", e.target.value)}
-                    placeholder={DEFAULT_MODELS[row.type]}
-                    disabled={loading}
-                    className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
-                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>API Key</label>
-                  <input
-                    type="password"
-                    value={row.api_key}
-                    onChange={(e) => updateAIRow(row.type, "api_key", e.target.value)}
-                    placeholder="sk-..."
-                    disabled={loading}
-                    className="px-3 py-2 text-sm rounded-md border outline-none transition-all"
-                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-secondary)")}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--color-border)")}
-                  />
-                </div>
-              </div>
-            </div>
-          );})}
+            );
+          })}
 
           <button type="submit" disabled={aiSaving || loading} className="px-5 py-2.5 text-sm font-semibold text-white rounded-md transition-opacity disabled:opacity-60 self-start" style={{ backgroundColor: "var(--color-secondary)" }}>
             {aiSaving ? "Saving…" : "Save AI Settings"}
