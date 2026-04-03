@@ -19,29 +19,47 @@ export default function ResetPasswordPage() {
     let recovered = false;
 
     // Listen for the PASSWORD_RECOVERY event. This fires after the
-    // recovery token (hash-based) or PKCE code has been exchanged.
+    // recovery token has been exchanged via the ?code= param below.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         recovered = true;
         setStep("ready");
       }
+
+      // If a SIGNED_IN event fires WITHOUT PASSWORD_RECOVERY (meaning the
+      // user is already logged in via a regular session), send them away.
+      if (event === "SIGNED_IN" && !recovered) {
+        router.replace("/dashboard");
+      }
     });
 
-    // PKCE flow: Supabase sends ?code=xxx in the URL. The browser client
-    // does not auto-exchange it in SSR mode, so we do it explicitly here.
     const code = new URLSearchParams(window.location.search).get("code");
+
     if (code) {
+      // PKCE flow: exchange the recovery code for a session.
+      // This triggers the PASSWORD_RECOVERY auth state change above.
       supabase.auth.exchangeCodeForSession(code).catch(() => {
         router.replace("/forgot-password");
       });
+    } else {
+      // No recovery code in URL — check whether the user already has a session.
+      // If they do, they shouldn't be here; send them to the dashboard.
+      // If they don't, the link is missing — send them to forgot-password.
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          router.replace("/dashboard");
+        } else {
+          router.replace("/forgot-password");
+        }
+      });
     }
 
-    // If no recovery event fires within 4 s, the link is invalid or expired.
+    // If no PASSWORD_RECOVERY event fires within 5 s the link is invalid/expired.
     const timeout = setTimeout(() => {
       if (!recovered) {
         router.replace("/forgot-password");
       }
-    }, 4000);
+    }, 5000);
 
     return () => {
       subscription.unsubscribe();
@@ -70,7 +88,7 @@ export default function ResetPasswordPage() {
       setLoading(false);
     } else {
       setStep("success");
-      setTimeout(() => router.push("/dashboard"), 2000);
+      router.push("/dashboard");
     }
   }
 
@@ -193,7 +211,7 @@ export default function ResetPasswordPage() {
                     className="text-xs font-semibold uppercase tracking-wider"
                     style={{ color: "var(--color-text-muted)" }}
                   >
-                    Confirm Password
+                    Confirm New Password
                   </label>
                   <input
                     id="confirm"
@@ -229,7 +247,7 @@ export default function ResetPasswordPage() {
                       Updating…
                     </>
                   ) : (
-                    "Set New Password"
+                    "Save New Password"
                   )}
                 </button>
               </form>
