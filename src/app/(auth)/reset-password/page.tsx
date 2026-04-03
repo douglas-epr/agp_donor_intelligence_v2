@@ -16,42 +16,31 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    let recovered = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        recovered = true;
-        setStep("ready");
-      }
-      // NOTE: Do NOT redirect on SIGNED_IN here.
-      // Supabase fires SIGNED_IN immediately when exchangeCodeForSession completes,
-      // then fires PASSWORD_RECOVERY. Redirecting on SIGNED_IN would kick the user
-      // away before they can set a new password.
-    });
-
     const code = new URLSearchParams(window.location.search).get("code");
 
-    if (code) {
-      // Exchange the recovery code — triggers SIGNED_IN then PASSWORD_RECOVERY
-      supabase.auth.exchangeCodeForSession(code).catch(() => {
-        router.replace("/forgot-password");
-      });
-    } else {
-      // No recovery code in URL — either already logged in or invalid link
+    if (!code) {
+      // No recovery code — redirect away based on session state
       supabase.auth.getSession().then(({ data: { session } }) => {
         router.replace(session ? "/dashboard" : "/forgot-password");
       });
+      return;
     }
 
-    // If PASSWORD_RECOVERY never fires the link is invalid/expired
-    const timeout = setTimeout(() => {
-      if (!recovered) router.replace("/forgot-password");
-    }, 6000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+    // PKCE flow: exchange the code for a session.
+    // On success → show the password form.
+    // NOTE: In PKCE flow, PASSWORD_RECOVERY event does NOT fire when calling
+    // exchangeCodeForSession() manually. SIGNED_IN fires instead.
+    // We rely on the promise result, not the auth event.
+    supabase.auth
+      .exchangeCodeForSession(code)
+      .then(({ error: exchangeError }) => {
+        if (exchangeError) {
+          router.replace("/forgot-password");
+        } else {
+          setStep("ready");
+        }
+      })
+      .catch(() => router.replace("/forgot-password"));
   }, [router]);
 
   const passwordsMatch = password.length >= 8 && confirm.length > 0 && password === confirm;
@@ -145,7 +134,7 @@ export default function ResetPasswordPage() {
             </div>
           )}
 
-          {/* Form */}
+          {/* Form — shown after successful code exchange */}
           {step === "ready" && (
             <>
               {error && (
