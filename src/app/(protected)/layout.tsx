@@ -27,8 +27,14 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
-      if (!authUser) { router.replace("/login"); return; }
+    supabase.auth.getUser().then(async ({ data: { user: authUser }, error }) => {
+      if (error || !authUser) {
+        // Stale / invalidated refresh token — clear cookies and redirect.
+        // Calling signOut() here prevents the "Invalid Refresh Token" retry loop.
+        await supabase.auth.signOut();
+        router.replace("/login");
+        return;
+      }
       const full_name = (authUser.user_metadata?.full_name as string) || authUser.email?.split("@")[0] || "User";
 
       // Load avatar_url from profiles table
